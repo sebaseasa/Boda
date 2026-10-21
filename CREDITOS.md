@@ -14,6 +14,7 @@ Cada asset usado en el simulador, de dónde viene y con qué licencia.
 
 | Archivo | Origen | Autor | Licencia | Cambios |
 |---|---|---|---|---|
+| `public/hdri/cielo-dia-2k.hdr` | [Kloofendal 48d Partly Cloudy Pure Sky](https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky), Poly Haven | Greg Zaal (original), Jarod Guest (cielo) | CC0 | Ninguno (resolución 2K) |
 | `public/hdri/cielo-atardecer-2k.hdr` | [Syferfontein 6d Clear Pure Sky](https://polyhaven.com/a/syferfontein_6d_clear_puresky), Poly Haven | Greg Zaal (original), Jarod Guest (cielo) | CC0 | Ninguno (resolución 2K) |
 | `public/texturas/cesped-verde-*.webp` | [Leafy Grass](https://polyhaven.com/a/leafy_grass), Poly Haven | Charlotte Baglioni | CC0 | WebP 1K; rugosidad reescalada a 0.5–1 |
 | `public/texturas/cesped-seco-*.webp` | [Grass Ground](https://polyhaven.com/a/grass_ground), Poly Haven | Charlotte Baglioni | CC0 | WebP 1K |

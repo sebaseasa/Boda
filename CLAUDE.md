@@ -42,6 +42,8 @@ Lo trabajo desde el celular (Samsung Galaxy Z Fold 5) y se publica en GitHub Pag
 - Extras: letrero "Bienvenidos a nuestro comienzo", lounge con fogata y sillones de ratán, faroles colgando del árbol grande, luces colgantes.
 
 ## Itinerario (modo "La experiencia")
+La boda empieza a las **12:00** (corrección de Sebas); falta definir qué pasa entre las 12:00 y las 3:00 pm.
+
 | Hora | Momento | Vista |
 |---|---|---|
 | 3:00 pm | Bienvenida | Letrero y lounge |
