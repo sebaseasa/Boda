@@ -10,13 +10,14 @@ import {
   ToneMappingEffect,
   ToneMappingMode,
 } from 'postprocessing';
-import { POR_DEFECTO, HORA_MIN, HORA_MAX } from './config.js';
+import { POR_DEFECTO, HORA_MIN, HORA_MAX, ARCOS, CEREMONIA } from './config.js';
 import { crearCalidad } from './calidad.js';
 import { crearCielo } from './escena/cielo.js';
 import { crearSol } from './escena/sol.js';
 import { crearTerreno } from './escena/terreno.js';
 import { crearHierba } from './escena/hierba.js';
 import { crearVegetacion } from './escena/vegetacion.js';
+import { crearCeremonia, zonaSinHierba } from './decoracion/ceremonia.js';
 
 const $ = (s) => document.querySelector(s);
 const contenedor = $('#stage');
@@ -36,11 +37,11 @@ contenedor.appendChild(renderer.domElement);
 
 const escena = new THREE.Scene();
 const camara = new THREE.PerspectiveCamera(50, 1, 0.1, 700);
-// Vista inicial parecida a las fotos de la finca: de frente al jacarandá y la palmera.
-camara.position.set(2.5, 1.7, -1);
+// Vista inicial: desde donde se sientan los invitados (ver VISTAS más abajo).
+camara.position.set(1.15, 1.5, -8.4);
 
 const controles = new OrbitControls(camara, renderer.domElement);
-controles.target.set(0.5, 3.2, -19);
+controles.target.set(0.75, 1.4, -18.6);
 controles.enableDamping = true;
 controles.dampingFactor = 0.08;
 controles.minDistance = 2;
@@ -68,8 +69,9 @@ manager.onProgress = (_url, cargados, total) => {
 
 const sol = crearSol(escena, calidad.actual);
 crearTerreno(escena, manager, renderer.capabilities.getMaxAnisotropy());
-const hierba = crearHierba(escena);
+const hierba = crearHierba(escena, zonaSinHierba());
 const vegetacionLista = crearVegetacion(escena, manager);
+const ceremoniaLista = crearCeremonia(escena, manager);
 const cieloListo = crearCielo(escena, renderer, manager);
 const todoCargado = new Promise((resolver) => (manager.onLoad = resolver));
 
@@ -96,13 +98,79 @@ function formatoHora(h) {
 
 let cielo = null;
 let vegetacion = null;
+let ceremonia = null;
 function aplicarHora(h) {
   sol.aplicarHora(h);
   const luz = cielo?.aplicarSol(sol.estado) ?? 1;
   vegetacion?.aplicarLuz(luz);
+  ceremonia?.aplicarLuz(luz);
   $('#hora-valor').textContent = formatoHora(h);
 }
 deslizador.addEventListener('input', () => aplicarHora(+deslizador.value));
+
+// Tipo de arco: se puede cambiar para comparar.
+const contArcos = $('#arcos');
+let arcoActual = POR_DEFECTO.arco;
+try {
+  arcoActual = localStorage.getItem('arco') || arcoActual;
+} catch {}
+contArcos.innerHTML = ARCOS.map(([id, nombre]) => `<button data-arco="${id}">${nombre}</button>`).join('');
+function ponerArco(id) {
+  arcoActual = id;
+  ceremonia?.ponerArco(id);
+  for (const b of contArcos.children) b.classList.toggle('activo', b.dataset.arco === id);
+  try {
+    localStorage.setItem('arco', id);
+  } catch {}
+}
+contArcos.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-arco]');
+  if (b) ponerArco(b.dataset.arco);
+});
+ponerArco(arcoActual);
+
+// Vistas de cámara con transición suave.
+const { arco } = CEREMONIA;
+const VISTAS = {
+  invitados: { nombre: 'Desde los invitados', p: [arco.x + 0.4, 1.5, -8.4], t: [arco.x, 1.4, arco.z] },
+  pasillo: { nombre: 'Entrada de la novia', p: [arco.x, 1.6, -1.5], t: [arco.x, 1.4, arco.z] },
+  altar: { nombre: 'Desde el altar', p: [arco.x + 0.3, 1.7, arco.z + 2.2], t: [arco.x, 1.1, -8] },
+  general: { nombre: 'General', p: [13, 7, -4], t: [arco.x, 1.2, -14] },
+  jardin: { nombre: 'Como en las fotos', p: [2.5, 1.7, -1], t: [0.5, 3.2, -19] },
+};
+const contVistas = $('#vistas');
+contVistas.innerHTML = Object.entries(VISTAS)
+  .map(([id, v]) => `<button data-vista="${id}">${v.nombre}</button>`)
+  .join('');
+let transicion = null;
+function irAVista(id) {
+  const v = VISTAS[id];
+  transicion = {
+    p0: camara.position.clone(),
+    t0: controles.target.clone(),
+    p1: new THREE.Vector3(...v.p),
+    t1: new THREE.Vector3(...v.t),
+    inicio: performance.now(),
+    duracion: 1600,
+  };
+  for (const b of contVistas.children) b.classList.toggle('activo', b.dataset.vista === id);
+}
+contVistas.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-vista]');
+  if (b) irAVista(b.dataset.vista);
+});
+controles.addEventListener('start', () => {
+  transicion = null;
+  for (const b of contVistas.children) b.classList.remove('activo');
+});
+function avanzarTransicion(ahora) {
+  if (!transicion) return;
+  const t = Math.min(1, (ahora - transicion.inicio) / transicion.duracion);
+  const e = t * t * (3 - 2 * t);
+  camara.position.lerpVectors(transicion.p0, transicion.p1, e);
+  controles.target.lerpVectors(transicion.t0, transicion.t1, e);
+  if (t >= 1) transicion = null;
+}
 
 function redimensionar() {
   const w = contenedor.clientWidth;
@@ -125,6 +193,7 @@ const reloj = new THREE.Timer();
 let hojas = 0;
 function cuadro(ahora) {
   reloj.update(ahora);
+  avanzarTransicion(ahora);
   controles.update();
   hojas = hierba.actualizar(reloj.getElapsed(), camara, calidad.actual.hierba);
   composer.render(reloj.getDelta());
@@ -134,9 +203,11 @@ function cuadro(ahora) {
   }
 }
 
-Promise.all([cieloListo, vegetacionLista, todoCargado]).then(([c, v]) => {
+Promise.all([cieloListo, vegetacionLista, ceremoniaLista, todoCargado]).then(([c, v, cer]) => {
   cielo = c;
   vegetacion = v;
+  ceremonia = cer;
+  ponerArco(arcoActual);
   aplicarHora(+deslizador.value);
   renderer.setAnimationLoop(cuadro);
   requestAnimationFrame(() => $('#carga').classList.add('oculta'));

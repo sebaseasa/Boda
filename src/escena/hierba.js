@@ -52,7 +52,7 @@ function atributosInstancia(cantidad, aleatorio) {
   };
 }
 
-function materialHierba(tiempo) {
+function materialHierba(tiempo, sinHierba) {
   const material = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     roughness: 1,
@@ -62,11 +62,13 @@ function materialHierba(tiempo) {
   });
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTiempo = tiempo;
+    shader.uniforms.uSinHierba = { value: sinHierba };
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
         /* glsl */ `#include <common>
         uniform float uTiempo;
+        uniform vec4 uSinHierba;
         attribute vec3 aDesplazamiento;
         attribute vec4 aParametros;
         varying float vAltura;
@@ -100,6 +102,8 @@ function materialHierba(tiempo) {
         vSeco = manchaSeca(mundo);
         // En las zonas secas la hierba es más baja.
         transformed.y *= mix(1.0, 0.7, vSeco);
+        // Bajo el camino de piedra no crece hierba.
+        if (mundo.x > uSinHierba.x && mundo.x < uSinHierba.z && mundo.y > uSinHierba.y && mundo.y < uSinHierba.w) transformed.y = -0.01;
         float rafaga = sin(uTiempo * 1.3 + mundo.x * 0.28 + mundo.y * 0.17) * 0.5 + 0.5;
         float temblor = sin(uTiempo * 4.1 + mundo.x * 2.3 + mundo.y * 1.9 + aParametros.w * 6.28);
         float doblez = y * y * aParametros.x * (0.35 * rafaga + 0.08 * temblor);
@@ -142,12 +146,12 @@ function generadorAleatorio(semilla) {
   };
 }
 
-export function crearHierba(escena) {
+export function crearHierba(escena, sinHierba = new THREE.Vector4(0, 0, 0, 0)) {
   const maximo = Math.round(BALDOSA * BALDOSA * HOJAS_POR_M2);
   const hoja = geometriaHoja();
   const instancias = atributosInstancia(maximo, generadorAleatorio(7));
   const tiempo = { value: 0 };
-  const material = materialHierba(tiempo);
+  const material = materialHierba(tiempo, sinHierba);
 
   const baldosas = [];
   for (let x = AREA.x0 + BALDOSA / 2; x < AREA.x1; x += BALDOSA) {
