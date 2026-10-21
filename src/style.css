@@ -48,6 +48,26 @@ html, body {
 #hora-valor { font-weight: 650; font-size: 1.05rem; }
 #hora { width: 100%; accent-color: var(--acento); }
 
+/* Vistas de cámara */
+#vistas {
+  position: fixed; z-index: 5;
+  top: calc(max(8px, env(safe-area-inset-top)) + 30px); left: 8px; right: 8px;
+  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+}
+#vistas::-webkit-scrollbar { display: none; }
+
+#vistas button, #arcos button {
+  flex: 0 0 auto; border: 0; border-radius: 999px; padding: 7px 12px;
+  font: 500 0.85rem system-ui, sans-serif; cursor: pointer;
+  background: rgba(251, 249, 244, 0.88); color: var(--tinta);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+#vistas button.activo, #arcos button.activo { background: var(--acento); color: #fff; }
+
+#arcos { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-bottom: 8px; }
+#arcos::-webkit-scrollbar { display: none; }
+#arcos button { background: #ece6d8; }
+
 #fps {
   position: fixed; z-index: 5; top: max(8px, env(safe-area-inset-top)); left: 8px;
   padding: 3px 8px; border-radius: 8px;

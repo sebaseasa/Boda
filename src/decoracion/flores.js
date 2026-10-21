@@ -1,0 +1,133 @@
+import * as THREE from 'three';
+import { tarjetasFollaje } from '../escena/follaje.js';
+
+// Ramas de rusco (el follaje de los centros de mesa de la prueba): se dibujan en un canvas con
+// transparencia y se usan como tarjetas de hoja.
+function texturaRusco() {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 512;
+  const x = c.getContext('2d');
+  x.strokeStyle = '#3d5a2c';
+  x.lineWidth = 5;
+  x.beginPath();
+  x.moveTo(128, 512);
+  x.quadraticCurveTo(120, 260, 132, 8);
+  x.stroke();
+  for (let i = 0; i < 9; i++) {
+    const y = 470 - i * 52;
+    const lado = i % 2 ? 1 : -1;
+    const largo = 95 - i * 5;
+    x.save();
+    x.translate(128 + lado * 6, y);
+    x.rotate(lado * (0.75 - i * 0.03));
+    const g = x.createLinearGradient(0, 0, 0, -largo);
+    g.addColorStop(0, '#2c4a22');
+    g.addColorStop(0.6, '#3f6530');
+    g.addColorStop(1, '#55793d');
+    x.fillStyle = g;
+    x.beginPath();
+    x.moveTo(0, 0);
+    x.bezierCurveTo(largo * 0.42, -largo * 0.25, largo * 0.3, -largo * 0.85, 0, -largo);
+    x.bezierCurveTo(-largo * 0.3, -largo * 0.85, -largo * 0.42, -largo * 0.25, 0, 0);
+    x.fill();
+    // Nervio central.
+    x.strokeStyle = 'rgba(160, 190, 120, 0.35)';
+    x.lineWidth = 2;
+    x.beginPath();
+    x.moveTo(0, -4);
+    x.lineTo(0, -largo + 8);
+    x.stroke();
+    x.restore();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
+let materialRuscoCache = null;
+export function materialRusco() {
+  if (!materialRuscoCache) {
+    materialRuscoCache = new THREE.MeshStandardMaterial({
+      map: texturaRusco(),
+      alphaTest: 0.5,
+      side: THREE.DoubleSide,
+      roughness: 0.55,
+      metalness: 0,
+    });
+  }
+  return materialRuscoCache;
+}
+
+const materialRosa = new THREE.MeshStandardMaterial({ color: 0xf7f2e8, roughness: 0.62, side: THREE.DoubleSide });
+const materialGypso = new THREE.MeshStandardMaterial({ color: 0xfbf9f3, roughness: 0.8 });
+const geometriaGypso = new THREE.IcosahedronGeometry(1, 0);
+
+const _m = new THREE.Matrix4();
+const _q = new THREE.Quaternion();
+const _q2 = new THREE.Quaternion();
+const _s = new THREE.Vector3();
+const _arriba = new THREE.Vector3(0, 1, 0);
+
+// Arreglo floral sobre una lista de puntos { p, n } (posición y hacia dónde mira la flor):
+// follaje de rusco, rosas blancas y gypsophila alrededor.
+export function arregloFloral(puntos, { rosaGeo, aleatorio, rosas = 1, radioFollaje = 0.3, densidad = 40 }) {
+  const grupo = new THREE.Group();
+
+  const volumenes = puntos.map(({ p }) => ({
+    c: p,
+    r: new THREE.Vector3(radioFollaje, radioFollaje, radioFollaje * 0.8),
+  }));
+  const follaje = new THREE.Mesh(tarjetasFollaje(volumenes, densidad, 0.13, aleatorio), materialRusco());
+  follaje.castShadow = true;
+  grupo.add(follaje);
+
+  const elegidos = puntos.filter(() => aleatorio() < rosas);
+  const rosasMalla = new THREE.InstancedMesh(rosaGeo, materialRosa, elegidos.length * 2);
+  let k = 0;
+  for (const { p, n } of elegidos) {
+    for (let j = 0; j < 2; j++) {
+      const dir = n.clone().add(new THREE.Vector3(aleatorio() - 0.5, aleatorio() - 0.5, aleatorio() - 0.5).multiplyScalar(0.7)).normalize();
+      _q.setFromUnitVectors(_arriba, dir);
+      _q2.setFromAxisAngle(dir, aleatorio() * Math.PI * 2);
+      _q.premultiply(_q2);
+      const d = 0.09 + aleatorio() * 0.05;
+      const pos = p.clone().addScaledVector(dir, radioFollaje * 0.55).add(new THREE.Vector3(aleatorio() - 0.5, aleatorio() - 0.5, aleatorio() - 0.5).multiplyScalar(radioFollaje * 0.8));
+      _m.compose(pos, _q, _s.setScalar(d));
+      rosasMalla.setMatrixAt(k++, _m);
+    }
+  }
+  rosasMalla.count = k;
+  rosasMalla.castShadow = true;
+  grupo.add(rosasMalla);
+
+  // Gypsophila: nubes de florcitas blancas entre las rosas.
+  const cantidad = puntos.length * 14;
+  const gypso = new THREE.InstancedMesh(geometriaGypso, materialGypso, cantidad);
+  for (let i = 0; i < cantidad; i++) {
+    const { p, n } = puntos[Math.floor(aleatorio() * puntos.length)];
+    const pos = p
+      .clone()
+      .addScaledVector(n, radioFollaje * (0.6 + aleatorio() * 0.5))
+      .add(new THREE.Vector3(aleatorio() - 0.5, aleatorio() - 0.5, aleatorio() - 0.5).multiplyScalar(radioFollaje * 1.6));
+    _m.compose(pos, _q.identity(), _s.setScalar(0.008 + aleatorio() * 0.006));
+    gypso.setMatrixAt(i, _m);
+  }
+  grupo.add(gypso);
+  return grupo;
+}
+
+// Reparte puntos a lo largo de una curva 3D, mirando hacia afuera de la curva y hacia los invitados (+Z).
+export function puntosEnCurva(curva, separacion, { haciaAfuera = 0.6, centro = null } = {}) {
+  const largo = curva.getLength();
+  const n = Math.max(2, Math.round(largo / separacion));
+  const puntos = [];
+  for (let i = 0; i <= n; i++) {
+    const p = curva.getPointAt(i / n);
+    const afuera = centro ? p.clone().sub(centro).setZ(0).normalize() : new THREE.Vector3();
+    const dir = new THREE.Vector3(0, 0, 1).addScaledVector(afuera, haciaAfuera).normalize();
+    puntos.push({ p, n: dir });
+  }
+  return puntos;
+}

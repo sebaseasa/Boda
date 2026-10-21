@@ -22,8 +22,28 @@ export const DISTRIBUCION = {
   altarZ: -14,
 };
 
+// Ceremonia: el arco va entre el jacarandá y la palmera y los invitados lo miran (hacia -Z).
+export const CEREMONIA = {
+  arco: { x: 0.75, z: -18.6 },
+  invitados: 50,
+  sillasPorLado: 5, // por fila, a cada lado del pasillo
+  primeraFilaZ: -14.3,
+  separacionFilas: 1.0,
+  separacionSillas: 0.55,
+  pasillo: { ancho: 1.5, desdeZ: -15.8, hastaZ: -2.5 },
+};
+
+export const ARCOS = [
+  ['jardin', 'Arco de jardín'],
+  ['circular', 'Circular'],
+  ['hexagonal', 'Hexagonal'],
+  ['madera', 'Madera con telas'],
+  ['columnas', 'Columnas de flores'],
+];
+
 export const POR_DEFECTO = {
   hora: 17.83, // 5:50 pm, beso de casados al atardecer
+  arco: 'jardin',
 };
 
 export const HORA_MIN = 15;
