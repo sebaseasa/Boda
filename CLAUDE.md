@@ -37,7 +37,7 @@ Lo trabajo desde el celular (Samsung Galaxy Z Fold 5) y se publica en GitHub Pag
 - Concepto: íntima, natural, elegante, atemporal, significativa.
 - Paleta: beige, verde oliva / salvia, marfil y dorado.
 - Lo que NO buscamos: fiesta grande, barra libre, decoración recargada, evento tradicional.
-- Ceremonia: arco de jardín con follaje y flores blancas, camino de piedra con faroles, sillas crossback de madera con cojín.
+- Ceremonia: el arco son los propios árboles (decisión de Sebas): el altar va entre el tronco del jacarandá y el de la palmera, bajo sus copas, y se decoran los árboles (no se arma un arco aparte). Camino de piedra con faroles, 50 sillas crossback de madera con cojín.
 - Recepción (según la prueba de mesa): mesas redondas con mantel marfil, plato base de vidrio con borde dorado texturizado, servilleta verde satinada con argolla dorada, copa verde tallada + copa de vino + copa de champán, cubiertos dorados, centro bajo de rosas blancas, alhelí y gypsophila dorada con candeleros dorados altos y caminos de tela verde arrugada. Sillas Tiffany doradas con faja de chifón marfil y lazo.
 - Extras: letrero "Bienvenidos a nuestro comienzo", lounge con fogata y sillones de ratán, faroles colgando del árbol grande, luces colgantes.
 
@@ -56,7 +56,7 @@ La boda empieza a las **12:00** (corrección de Sebas); falta definir qué pasa 
 
 ## Funciones que deben existir (vienen del prototipo)
 El prototipo está en `referencia/simulador-boda.html`; úsalo como especificación de funciones, no de estilo visual.
-- Opciones: paleta, sillas de ceremonia y de recepción, tipo de arco, pasillo (piedra, alfombra, césped), pétalos, faroles, letrero, invitados (20-150), mesas (redondas de 10, imperiales de madera, mixta), lounge, carpa Plan B, pista de baile, luces, hora del día.
+- Opciones: paleta, sillas de ceremonia y de recepción, decoración de los árboles del altar, pasillo (piedra, alfombra, césped), pétalos, faroles, letrero, invitados (20-150), mesas (redondas de 10, imperiales de madera, mixta), lounge, carpa Plan B, pista de baile, luces, hora del día.
 - Vistas de cámara con transición suave y control táctil (girar, acercar).
 - Animación de la entrada de la novia.
 - "Guardar esta opción" con votos ♥ Seba y ♥ Caro; cuando los dos votan la misma, se marca como Decidido.

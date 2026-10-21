@@ -20,17 +20,38 @@ function generadorAleatorio(semilla) {
   };
 }
 
+// Base del tronco: promedio de los vértices que tocan el suelo (en coordenadas del modelo ya
+// escalado y girado). Así la posición de la distribución es la del tronco y no la de la copa.
+function baseDelTronco(modelo) {
+  modelo.updateMatrixWorld(true);
+  const caja = new THREE.Box3().setFromObject(modelo);
+  const v = new THREE.Vector3();
+  const suma = new THREE.Vector3();
+  let n = 0;
+  modelo.traverse((o) => {
+    if (!o.isMesh) return;
+    const p = o.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld);
+      if (v.y < caja.min.y + 0.3) {
+        suma.add(v);
+        n++;
+      }
+    }
+  });
+  return { x: suma.x / n, z: suma.z / n, y: caja.min.y };
+}
+
 async function cargarModelo(cargador, { archivo, alto, giro }, posicion) {
   const gltf = await cargador.loadAsync(archivo);
   const modelo = gltf.scene;
   const caja = new THREE.Box3().setFromObject(modelo);
-  const escala = alto / (caja.max.y - caja.min.y);
-  modelo.scale.setScalar(escala);
+  modelo.scale.setScalar(alto / (caja.max.y - caja.min.y));
   modelo.rotation.y = giro;
-  // Apoyar la base en el suelo y centrar el tronco en la posición indicada.
-  const centro = caja.getCenter(new THREE.Vector3()).multiplyScalar(escala);
+  // El tronco queda justo en la posición indicada, apoyado en el suelo.
+  const base = baseDelTronco(modelo);
+  modelo.position.set(-base.x, -base.y, -base.z);
   const pivote = new THREE.Group();
-  modelo.position.set(-centro.x, -caja.min.y * escala, -centro.z);
   pivote.add(modelo);
   pivote.position.set(posicion.x, 0, posicion.z);
   modelo.traverse((o) => {
