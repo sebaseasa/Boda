@@ -91,6 +91,10 @@ deslizador.max = HORA_MAX * 60;
 deslizador.step = 5;
 deslizador.value = Math.round((POR_DEFECTO.hora * 60) / 5) * 5;
 const leerHora = () => +deslizador.value / 60;
+function ponerHora(minutos) {
+  deslizador.value = minutos;
+  aplicarHora(leerHora());
+}
 
 function formatoHora(h) {
   const minutos = Math.round(h * 60);
@@ -156,13 +160,15 @@ function elegir(g, id) {
   } catch {}
 }
 // Extras que se prenden y apagan por separado.
+// La ceremonia es al mediodía: por defecto va la nube de flores; luces y velas quedan para la noche.
 const EXTRAS = [
+  ['nube', 'Nube de flores'],
   ['luces', 'Cortina de luces'],
   ['velas', 'Velas'],
 ];
-const extras = { luces: true, velas: true };
+const extras = { nube: true, luces: false, velas: false };
 try {
-  Object.assign(extras, JSON.parse(localStorage.getItem('extras') || '{}'));
+  Object.assign(extras, JSON.parse(localStorage.getItem('extras-dia') || '{}'));
 } catch {}
 const filaExtras = document.createElement('div');
 filaExtras.className = 'fila-opciones';
@@ -172,7 +178,7 @@ function aplicarExtras() {
   ceremonia?.ponerExtras(extras);
   for (const b of filaExtras.querySelectorAll('button')) b.classList.toggle('activo', extras[b.dataset.id]);
   try {
-    localStorage.setItem('extras', JSON.stringify(extras));
+    localStorage.setItem('extras-dia', JSON.stringify(extras));
   } catch {}
 }
 filaExtras.addEventListener('click', (e) => {
@@ -219,12 +225,15 @@ contVistas.addEventListener('click', (e) => {
   const b = e.target.closest('button[data-vista]');
   if (!b) return;
   irAVista(b.dataset.vista);
-  if (b.dataset.vista === 'pasillo') ceremonia?.novios.entrar();
+  if (b.dataset.vista === 'pasillo') {
+    // 12:00 pm: empieza la ceremonia con la entrada de la novia.
+    ponerHora(12 * 60);
+    ceremonia?.novios.entrar();
+  }
   if (b.dataset.vista === 'beso') {
     plegarOpciones(true);
-    // 5:50 pm: el beso de casados al atardecer, con lluvia de pétalos.
-    deslizador.value = 17 * 60 + 50;
-    aplicarHora(leerHora());
+    // 1:20 pm: el beso, casi al final de la ceremonia (12:00 a 1:30), con pétalos de los invitados.
+    ponerHora(13 * 60 + 20);
     setTimeout(() => ceremonia?.besar(), 1200);
   }
 });

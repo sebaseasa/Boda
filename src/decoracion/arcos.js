@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CEREMONIA, DISTRIBUCION } from '../config.js';
-import { arregloFloral, crearPetalos, puntosEnCurva } from './flores.js';
+import { arregloFloral, crearPetalos, pradoFloral, puntosEnCurva } from './flores.js';
+import { TIEMPO } from './luces.js';
 import { farolesEn } from './pasillo.js';
 
 // El arco del altar son los propios árboles: el tronco del jacarandá a un lado, el de la palmera
@@ -19,6 +20,19 @@ const chifon = new THREE.MeshPhysicalMaterial({
   side: THREE.DoubleSide,
   depthWrite: false,
 });
+// Viento: la tela ondea suave, más en el medio de su altura (arriba está amarrada y abajo apoyada).
+chifon.onBeforeCompile = (shader) => {
+  shader.uniforms.uTiempo = TIEMPO;
+  shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nuniform float uTiempo;').replace(
+    '#include <begin_vertex>',
+    `#include <begin_vertex>
+    vec4 mundoTela = modelMatrix * vec4(transformed, 1.0);
+    float sujeta = sin(3.14159 * clamp(mundoTela.y / 4.8, 0.0, 1.0));
+    float rafaga = 0.6 + 0.4 * sin(uTiempo * 0.35 + mundoTela.x * 0.2);
+    transformed.z += sujeta * rafaga * (0.07 * sin(uTiempo * 1.1 + mundoTela.x * 2.1 + mundoTela.y * 1.3)
+      + 0.03 * sin(uTiempo * 2.4 + mundoTela.y * 3.7));`,
+  );
+};
 const cuerda = new THREE.MeshStandardMaterial({ color: 0x3a2c20, roughness: 1 });
 
 function troncos() {
@@ -131,16 +145,9 @@ function guirnaldaTela(a, b, caidaU, capas) {
   return g;
 }
 
-// Arreglo grande al pie de una caída de tela.
-function arregloPie(r, centro) {
-  const puntos = [];
-  for (let i = 0; i < 26; i++) {
-    const a = r.aleatorio() * Math.PI;
-    const h = r.aleatorio();
-    const n = new THREE.Vector3(Math.cos(a), 0.3 + h, Math.sin(a) + 0.4).normalize();
-    puntos.push({ p: centro.clone().add(new THREE.Vector3(n.x * 0.5, 0.1 + h * 0.55, n.z * 0.35)), n });
-  }
-  return arregloFloral(puntos, { ...r, rosas: 0.9, radioFollaje: 0.28 });
+// Prado de flores al pie de cada caída de tela.
+function arregloPie(r, centro, lado) {
+  return pradoFloral(centro.clone().add(new THREE.Vector3(-lado * 0.25, 0, 0.1)), { ...r, radio: 1.0, cantidad: 36, alto: 0.6, espigas: 16 });
 }
 
 function telas(r) {
@@ -152,7 +159,7 @@ function telas(r) {
     // Dos capas por lado, un poco corridas, como tela pasada por encima de la rama.
     g.add(caida(punto, 1.1, 0.9, 0));
     g.add(caida(punto.clone().add(new THREE.Vector3(lado * 0.18, 0, -0.08)), 0.9, 0.7, 1.7));
-    g.add(arregloPie(r, new THREE.Vector3(punto.x - lado * 0.15, 0, punto.z + 0.55)));
+    g.add(arregloPie(r, new THREE.Vector3(punto.x - lado * 0.15, 0, punto.z + 0.55), lado));
   }
   g.add(guirnaldaTela(izq.clone().add(new THREE.Vector3(0.1, 0, 0.05)), der.clone().add(new THREE.Vector3(-0.1, 0, 0.05)), 1.5, 3));
   // Pétalos al pie de las telas (en coordenadas del altar, igual que el resto del grupo).

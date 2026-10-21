@@ -9,6 +9,7 @@ import { crearNovios } from './novios.js';
 import { crearInvitados } from './invitados.js';
 import { cortinaDeLuces, velasEnVidrio, grupoDeVelas, TIEMPO } from './luces.js';
 import { lluviaDePetalos } from './lluvia.js';
+import { nubeDeFlores, pradoFloral } from './flores.js';
 
 function generadorAleatorio(semilla) {
   let s = semilla >>> 0;
@@ -128,10 +129,38 @@ export async function crearCeremonia(escena, manager) {
   });
   grupo.add(grupoVelas);
 
-  const lluvia = lluviaDePetalos(new THREE.Vector3(arco.x, 0, arco.z + 1.1), 420, generadorAleatorio(5));
+  // Pétalos que lanzan los invitados de las primeras filas, a ambos lados del pasillo.
+  const borde = pasillo.ancho / 2;
+  const lluvia = lluviaDePetalos(
+    [
+      { x0: arco.x - borde - 2.2, x1: arco.x - borde - 0.2, z0: arco.z + 3.6, z1: arco.z + 5.2 },
+      { x0: arco.x + borde + 0.2, x1: arco.x + borde + 2.2, z0: arco.z + 3.6, z1: arco.z + 5.2 },
+    ],
+    new THREE.Vector3(arco.x, 0, arco.z + 1.3),
+    480,
+    generadorAleatorio(5),
+  );
   grupo.add(lluvia.malla);
 
-  function ponerExtras({ luces, velas: conVelas }) {
+  // Nube de flores colgando de las copas, sobre los novios.
+  const nube = nubeDeFlores(new THREE.Vector3(0, 3.35, 0.95), { rosaGeo, aleatorio: generadorAleatorio(61), hastaRama: 1.5 });
+  lugarArco.add(nube);
+
+  // Prados de flores a la entrada del pasillo, como en las referencias de Caro.
+  for (const lado of [-1, 1]) {
+    const entrada = pradoFloral(new THREE.Vector3(arco.x + lado * (borde + 0.75), 0, pasillo.hastaZ - 0.2), {
+      radio: 0.85,
+      cantidad: 28,
+      alto: 0.5,
+      espigas: 12,
+      rosaGeo,
+      aleatorio: generadorAleatorio(lado > 0 ? 81 : 83),
+    });
+    pasillos.flores.add(entrada);
+  }
+
+  function ponerExtras({ nube: conNube, luces, velas: conVelas }) {
+    nube.visible = conNube;
     cortina.grupo.visible = luces;
     grupoVelas.visible = conVelas;
   }
