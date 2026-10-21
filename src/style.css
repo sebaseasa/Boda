@@ -87,4 +87,8 @@ html, body {
   display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center;
   background: var(--fondo); color: #f1ebdf;
 }
-#error[hidden], #fps[hidden] { display: none; }
+#error[hidden], #fps[hidden], .opciones[hidden] { display: none; }
+#ver-opciones {
+  border: 0; border-radius: 999px; padding: 5px 12px; cursor: pointer;
+  background: var(--acento); color: #fff; font: 600 0.8rem system-ui, sans-serif;
+}

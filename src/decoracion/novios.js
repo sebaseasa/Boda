@@ -180,16 +180,33 @@ export function crearNovios(rosaGeo, aleatorio) {
 
   // Entrada de la novia: camina por el pasillo hasta el altar.
   let entrada = null;
+  // Beso: se acercan y se miran de frente.
+  let beso = null;
   return {
     grupo,
     entrar(alTerminar) {
+      beso = null;
+      colocar(el, altarNovio);
       entrada = { inicio: performance.now(), duracion: 15000, alTerminar };
     },
     get caminando() {
       return entrada !== null;
     },
     posicionNovia: ella.position,
+    besar() {
+      entrada = null;
+      beso = { inicio: performance.now(), duracion: 1800 };
+    },
     actualizar(ahora) {
+      if (beso) {
+        const t = Math.min(1, (ahora - beso.inicio) / beso.duracion);
+        const e = t * t * (3 - 2 * t);
+        el.position.set(THREE.MathUtils.lerp(altarNovio.x, arco.x - 0.2, e), 0, altarNovio.z);
+        el.rotation.set(0, THREE.MathUtils.lerp(altarNovio.giro, -Math.PI / 2, e), 0);
+        ella.position.set(THREE.MathUtils.lerp(altarNovia.x, arco.x + 0.19, e), 0, altarNovia.z);
+        ella.rotation.set(0, THREE.MathUtils.lerp(altarNovia.giro, Math.PI / 2, e), 0);
+        if (t >= 1) beso = null;
+      }
       if (!entrada) return;
       const t = Math.min(1, (ahora - entrada.inicio) / entrada.duracion);
       const e = t < 0.85 ? t / 0.85 : 1;

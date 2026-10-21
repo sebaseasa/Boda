@@ -7,6 +7,8 @@ import { crearSillas } from './sillas.js';
 import { crearPiedras, crearFaroles, pasilloDeFlores } from './pasillo.js';
 import { crearNovios } from './novios.js';
 import { crearInvitados } from './invitados.js';
+import { cortinaDeLuces, velasEnVidrio, grupoDeVelas, TIEMPO } from './luces.js';
+import { lluviaDePetalos } from './lluvia.js';
 
 function generadorAleatorio(semilla) {
   let s = semilla >>> 0;
@@ -96,6 +98,43 @@ export async function crearCeremonia(escena, manager) {
   const lugarArco = new THREE.Group();
   lugarArco.position.set(CEREMONIA.arco.x, 0, CEREMONIA.arco.z);
   grupo.add(lugarArco);
+
+  // Extras del atardecer: cortina de luces detrás del altar y velas en vidrio.
+  const aleatorioExtras = generadorAleatorio(91);
+  const cortina = cortinaDeLuces({ x0: -3.2, x1: 3.4, z0: -0.95, z1: -0.35, arriba: [4.3, 5.0], abajo: [1.0, 2.3] }, 46, aleatorioExtras);
+  const luzAltar = new THREE.PointLight(0xffb46b, 0, 7, 2);
+  luzAltar.position.set(0, 2.2, 0.2);
+  cortina.grupo.add(luzAltar);
+  lugarArco.add(cortina.grupo);
+
+  const { arco, pasillo } = CEREMONIA;
+  const velas = [
+    ...grupoDeVelas(new THREE.Vector3(arco.x - 2.7, 0, arco.z + 1.4), 7, 0.4, aleatorioExtras),
+    ...grupoDeVelas(new THREE.Vector3(arco.x + 2.9, 0, arco.z + 1.2), 7, 0.4, aleatorioExtras),
+  ];
+  for (let z = pasillo.desdeZ + 0.8; z < pasillo.hastaZ; z += 1.6) {
+    for (const lado of [-1, 1]) velas.push(...grupoDeVelas(new THREE.Vector3(arco.x + lado * (pasillo.ancho / 2 + 0.55), 0, z), 3, 0.15, aleatorioExtras));
+  }
+  const grupoVelas = velasEnVidrio(velas);
+  const lucesVelas = [
+    [arco.x - 2.7, arco.z + 1.4],
+    [arco.x + 2.9, arco.z + 1.2],
+    [arco.x, THREE.MathUtils.lerp(pasillo.desdeZ, pasillo.hastaZ, 0.45)],
+  ].map(([x, z]) => {
+    const l = new THREE.PointLight(0xffa860, 0, 4.5, 2);
+    l.position.set(x, 0.45, z);
+    grupoVelas.add(l);
+    return l;
+  });
+  grupo.add(grupoVelas);
+
+  const lluvia = lluviaDePetalos(new THREE.Vector3(arco.x, 0, arco.z + 1.1), 420, generadorAleatorio(5));
+  grupo.add(lluvia.malla);
+
+  function ponerExtras({ luces, velas: conVelas }) {
+    cortina.grupo.visible = luces;
+    grupoVelas.visible = conVelas;
+  }
   const arcos = {};
   function ponerArco(tipo) {
     if (!arcos[tipo]) {
@@ -109,8 +148,17 @@ export async function crearCeremonia(escena, manager) {
 
   let actual = null;
   let ultimaLuz = 1;
-  function aplicarLuz(luz) {
+  let ultimaAltura = 30;
+  function aplicarLuz(luz, altura = ultimaAltura) {
     ultimaLuz = luz;
+    ultimaAltura = altura;
+    // Las luces del altar se encienden entre las 5:15 y las 5:50, cuando el sol baja de 16° a 9°.
+    const encendido = 1 - THREE.MathUtils.smoothstep(altura, 9, 16);
+    cortina.encender(encendido);
+    luzAltar.intensity = 3 * encendido;
+    // Las velas están prendidas siempre; su luz se nota al caer la tarde.
+    const tarde = 1 - THREE.MathUtils.smoothstep(altura, 2, 20);
+    for (const l of lucesVelas) l.intensity = 1.2 * tarde;
     // Los faroles se notan al caer la tarde.
     const noche = 1 - THREE.MathUtils.smoothstep(luz, 0.05, 0.6);
     for (const l of faroles.luces) l.intensity = pasilloActual === 'piedra' ? 1.6 * noche : 0;
@@ -122,8 +170,18 @@ export async function crearCeremonia(escena, manager) {
     ponerPasillo,
     ponerSillas,
     mostrarInvitados,
+    ponerExtras,
     novios,
     aplicarLuz,
+    besar() {
+      novios.besar();
+      lluvia.soltar();
+    },
+    actualizar(ahora, segundos) {
+      TIEMPO.value = segundos;
+      novios.actualizar(ahora);
+      lluvia.actualizar(ahora);
+    },
   };
 }
 

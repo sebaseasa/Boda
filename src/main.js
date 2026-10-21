@@ -78,10 +78,11 @@ const todoCargado = new Promise((resolver) => (manager.onLoad = resolver));
 function aplicarCalidad(nivel) {
   renderer.setPixelRatio(Math.min(devicePixelRatio, nivel.pixeles));
   sol.ajustarSombra(nivel.sombra);
-  bloom.blendMode.opacity.value = nivel.bloom ? 1 : 0;
+  bloom.resolution.scale = nivel.bloom;
   redimensionar();
 }
 calidad.alCambiar(aplicarCalidad);
+bloom.resolution.scale = calidad.actual.bloom;
 
 // Hora del día. El deslizador trabaja en minutos (de 5 en 5) para no arrastrar decimales.
 const deslizador = $('#hora');
@@ -106,7 +107,7 @@ function aplicarHora(h) {
   sol.aplicarHora(h);
   const luz = cielo?.aplicarSol(sol.estado) ?? 1;
   vegetacion?.aplicarLuz(luz);
-  ceremonia?.aplicarLuz(luz);
+  ceremonia?.aplicarLuz(luz, sol.estado.altura);
   $('#hora-valor').textContent = formatoHora(h);
 }
 deslizador.addEventListener('input', () => aplicarHora(leerHora()));
@@ -121,6 +122,14 @@ const GRUPOS = [
 ];
 const elegido = {};
 const contOpciones = $('#opciones');
+// El panel de opciones se pliega para no tapar la escena en el celular.
+const botonOpciones = $('#ver-opciones');
+function plegarOpciones(plegado) {
+  contOpciones.hidden = plegado;
+  botonOpciones.textContent = plegado ? 'Opciones ▴' : 'Ocultar opciones ▾';
+}
+botonOpciones.addEventListener('click', () => plegarOpciones(!contOpciones.hidden));
+plegarOpciones(true);
 for (const g of GRUPOS) {
   elegido[g.clave] = POR_DEFECTO[g.clave];
   try {
@@ -146,7 +155,37 @@ function elegir(g, id) {
     localStorage.setItem(g.clave, id);
   } catch {}
 }
-const aplicarOpciones = () => GRUPOS.forEach((g) => elegir(g, elegido[g.clave]));
+// Extras que se prenden y apagan por separado.
+const EXTRAS = [
+  ['luces', 'Cortina de luces'],
+  ['velas', 'Velas'],
+];
+const extras = { luces: true, velas: true };
+try {
+  Object.assign(extras, JSON.parse(localStorage.getItem('extras') || '{}'));
+} catch {}
+const filaExtras = document.createElement('div');
+filaExtras.className = 'fila-opciones';
+filaExtras.innerHTML = '<span>Extras</span>' + EXTRAS.map(([id, nombre]) => `<button data-id="${id}">${nombre}</button>`).join('');
+contOpciones.appendChild(filaExtras);
+function aplicarExtras() {
+  ceremonia?.ponerExtras(extras);
+  for (const b of filaExtras.querySelectorAll('button')) b.classList.toggle('activo', extras[b.dataset.id]);
+  try {
+    localStorage.setItem('extras', JSON.stringify(extras));
+  } catch {}
+}
+filaExtras.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-id]');
+  if (!b) return;
+  extras[b.dataset.id] = !extras[b.dataset.id];
+  aplicarExtras();
+});
+
+const aplicarOpciones = () => {
+  GRUPOS.forEach((g) => elegir(g, elegido[g.clave]));
+  aplicarExtras();
+};
 aplicarOpciones();
 
 // Vistas de cámara con transición suave.
@@ -154,6 +193,7 @@ const { arco } = CEREMONIA;
 const VISTAS = {
   invitados: { nombre: 'Desde los invitados', p: [arco.x + 0.4, 1.5, -8.4], t: [arco.x, 1.4, arco.z] },
   pasillo: { nombre: '▶ Entrada de la novia', p: [arco.x - 1.7, 1.6, arco.z + 2.8], t: [arco.x + 0.2, 1.1, -5] },
+  beso: { nombre: '♥ El beso', p: [arco.x + 0.3, 1.6, arco.z + 6.4], t: [arco.x, 1.5, arco.z + 0.9] },
   altar: { nombre: 'Desde el altar', p: [arco.x + 0.3, 1.7, arco.z + 2.2], t: [arco.x, 1.1, -8] },
   general: { nombre: 'General', p: [13, 7, -4], t: [arco.x, 1.2, -14] },
   jardin: { nombre: 'Como en las fotos', p: [2.5, 1.7, -1], t: [0.5, 3.2, -19] },
@@ -180,6 +220,13 @@ contVistas.addEventListener('click', (e) => {
   if (!b) return;
   irAVista(b.dataset.vista);
   if (b.dataset.vista === 'pasillo') ceremonia?.novios.entrar();
+  if (b.dataset.vista === 'beso') {
+    plegarOpciones(true);
+    // 5:50 pm: el beso de casados al atardecer, con lluvia de pétalos.
+    deslizador.value = 17 * 60 + 50;
+    aplicarHora(leerHora());
+    setTimeout(() => ceremonia?.besar(), 1200);
+  }
 });
 controles.addEventListener('start', () => {
   transicion = null;
@@ -216,7 +263,7 @@ let hojas = 0;
 function cuadro(ahora) {
   reloj.update(ahora);
   avanzarTransicion(ahora);
-  ceremonia?.novios.actualizar(ahora);
+  ceremonia?.actualizar(ahora, reloj.getElapsed());
   controles.update();
   hojas = hierba.actualizar(reloj.getElapsed(), camara, calidad.actual.hierba);
   composer.render(reloj.getDelta());
