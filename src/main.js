@@ -10,7 +10,7 @@ import {
   ToneMappingEffect,
   ToneMappingMode,
 } from 'postprocessing';
-import { POR_DEFECTO, HORA_MIN, HORA_MAX, ARCOS, PASILLOS, DISTRIBUCIONES, CEREMONIA } from './config.js';
+import { POR_DEFECTO, HORA_MIN, HORA_MAX, ARCOS, PASILLOS, DISTRIBUCIONES, INVITADOS, CEREMONIA } from './config.js';
 import { crearCalidad } from './calidad.js';
 import { crearCielo } from './escena/cielo.js';
 import { crearSol } from './escena/sol.js';
@@ -117,6 +117,7 @@ const GRUPOS = [
   { clave: 'arco', etiqueta: 'Árboles', lista: ARCOS, aplicar: (id) => ceremonia?.ponerArco(id) },
   { clave: 'pasillo', etiqueta: 'Pasillo', lista: PASILLOS, aplicar: (id) => ceremonia?.ponerPasillo(id) },
   { clave: 'sillas', etiqueta: 'Sillas', lista: DISTRIBUCIONES, aplicar: (id) => ceremonia?.ponerSillas(id) },
+  { clave: 'invitados', etiqueta: 'Invitados', lista: INVITADOS, aplicar: (id) => ceremonia?.mostrarInvitados(id === 'si') },
 ];
 const elegido = {};
 const contOpciones = $('#opciones');

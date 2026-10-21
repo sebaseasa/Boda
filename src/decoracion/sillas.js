@@ -94,17 +94,18 @@ export function crearSillas(madera, distribucion) {
   const posiciones = posicionesSillas(distribucion);
   const cojin = new THREE.MeshStandardMaterial({ color: 0xeee6d6, roughness: 0.92 });
   const grupo = new THREE.Group();
-  const m = new THREE.Matrix4();
+  // Un poco de desorden: nadie alinea 50 sillas al milímetro.
+  const matrices = posiciones.map((p, i) => {
+    const giro = (Math.sin(i * 12.9898) * 43758.5453) % 1;
+    return new THREE.Matrix4().makeRotationY(p.giro + giro * 0.06).setPosition(p.x + giro * 0.02, 0, p.z - giro * 0.03);
+  });
   for (const [geo, material] of [[geometriaSilla(), madera], [geometriaCojin(), cojin]]) {
     const malla = new THREE.InstancedMesh(geo, material, posiciones.length);
-    posiciones.forEach((p, i) => {
-      // Un poco de desorden: nadie alinea 50 sillas al milímetro.
-      const giro = (Math.sin(i * 12.9898) * 43758.5453) % 1;
-      m.makeRotationY(p.giro + giro * 0.06).setPosition(p.x + giro * 0.02, 0, p.z - giro * 0.03);
-      malla.setMatrixAt(i, m);
-    });
+    matrices.forEach((m, i) => malla.setMatrixAt(i, m));
     malla.castShadow = malla.receiveShadow = true;
     grupo.add(malla);
   }
+  // Los invitados se sientan con estas mismas posiciones.
+  grupo.userData.matrices = matrices;
   return grupo;
 }

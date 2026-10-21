@@ -53,11 +53,17 @@ export const DISTRIBUCIONES = [
   ['rectas', 'Rectas'],
 ];
 
+export const INVITADOS = [
+  ['si', 'Sentados'],
+  ['no', 'Ocultos'],
+];
+
 export const POR_DEFECTO = {
   hora: 17.83, // 5:50 pm, beso de casados al atardecer
   arco: 'telas',
   pasillo: 'flores',
   sillas: 'curvas',
+  invitados: 'si',
 };
 
 export const HORA_MIN = 12; // la boda empieza al mediodía

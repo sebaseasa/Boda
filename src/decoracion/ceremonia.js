@@ -6,6 +6,7 @@ import { CONSTRUCTORES } from './arcos.js';
 import { crearSillas } from './sillas.js';
 import { crearPiedras, crearFaroles, pasilloDeFlores } from './pasillo.js';
 import { crearNovios } from './novios.js';
+import { crearInvitados } from './invitados.js';
 
 function generadorAleatorio(semilla) {
   let s = semilla >>> 0;
@@ -53,13 +54,23 @@ export async function crearCeremonia(escena, manager) {
 
   // Sillas: se rearman al cambiar la distribución (son pocas mallas instanciadas).
   let sillas = null;
+  let invitados = null;
+  let conInvitados = true;
   function ponerSillas(distribucion) {
-    if (sillas) {
-      grupo.remove(sillas);
-      sillas.traverse((o) => o.isInstancedMesh && o.dispose());
+    for (const g of [sillas, invitados]) {
+      if (!g) continue;
+      grupo.remove(g);
+      g.traverse((o) => o.isInstancedMesh && o.dispose());
     }
     sillas = crearSillas(madera, distribucion);
-    grupo.add(sillas);
+    // Misma semilla siempre: cada invitado conserva su ropa al cambiar la distribución.
+    invitados = crearInvitados(sillas.userData.matrices, generadorAleatorio(71));
+    invitados.visible = conInvitados;
+    grupo.add(sillas, invitados);
+  }
+  function mostrarInvitados(si) {
+    conInvitados = si;
+    if (invitados) invitados.visible = si;
   }
 
   // Pasillo: camino de piedra con faroles, o pasto con flores y pétalos.
@@ -110,6 +121,7 @@ export async function crearCeremonia(escena, manager) {
     ponerArco,
     ponerPasillo,
     ponerSillas,
+    mostrarInvitados,
     novios,
     aplicarLuz,
   };
