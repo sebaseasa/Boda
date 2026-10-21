@@ -10,14 +10,14 @@ import {
   ToneMappingEffect,
   ToneMappingMode,
 } from 'postprocessing';
-import { POR_DEFECTO, HORA_MIN, HORA_MAX, ARCOS, CEREMONIA } from './config.js';
+import { POR_DEFECTO, HORA_MIN, HORA_MAX, ARCOS, PASILLOS, DISTRIBUCIONES, CEREMONIA } from './config.js';
 import { crearCalidad } from './calidad.js';
 import { crearCielo } from './escena/cielo.js';
 import { crearSol } from './escena/sol.js';
 import { crearTerreno } from './escena/terreno.js';
 import { crearHierba } from './escena/hierba.js';
 import { crearVegetacion } from './escena/vegetacion.js';
-import { crearCeremonia, zonaSinHierba } from './decoracion/ceremonia.js';
+import { crearCeremonia, ZONA_SIN_HIERBA } from './decoracion/ceremonia.js';
 
 const $ = (s) => document.querySelector(s);
 const contenedor = $('#stage');
@@ -69,7 +69,7 @@ manager.onProgress = (_url, cargados, total) => {
 
 const sol = crearSol(escena, calidad.actual);
 crearTerreno(escena, manager, renderer.capabilities.getMaxAnisotropy());
-const hierba = crearHierba(escena, zonaSinHierba());
+const hierba = crearHierba(escena, ZONA_SIN_HIERBA);
 const vegetacionLista = crearVegetacion(escena, manager);
 const ceremoniaLista = crearCeremonia(escena, manager);
 const cieloListo = crearCielo(escena, renderer, manager);
@@ -111,28 +111,42 @@ function aplicarHora(h) {
 }
 deslizador.addEventListener('input', () => aplicarHora(leerHora()));
 
-// Tipo de arco: se puede cambiar para comparar.
-const contArcos = $('#arcos');
-let arcoActual = POR_DEFECTO.arco;
-try {
-  const guardado = localStorage.getItem('arco');
-  // Solo si sigue existiendo esa opción (antes había arcos armados que ya no están).
-  if (ARCOS.some(([id]) => id === guardado)) arcoActual = guardado;
-} catch {}
-contArcos.innerHTML = ARCOS.map(([id, nombre]) => `<button data-arco="${id}">${nombre}</button>`).join('');
-function ponerArco(id) {
-  arcoActual = id;
-  ceremonia?.ponerArco(id);
-  for (const b of contArcos.children) b.classList.toggle('activo', b.dataset.arco === id);
+// Opciones para comparar: decoración de los árboles, pasillo y sillas. Se recuerda la última
+// elección en este navegador.
+const GRUPOS = [
+  { clave: 'arco', etiqueta: 'Árboles', lista: ARCOS, aplicar: (id) => ceremonia?.ponerArco(id) },
+  { clave: 'pasillo', etiqueta: 'Pasillo', lista: PASILLOS, aplicar: (id) => ceremonia?.ponerPasillo(id) },
+  { clave: 'sillas', etiqueta: 'Sillas', lista: DISTRIBUCIONES, aplicar: (id) => ceremonia?.ponerSillas(id) },
+];
+const elegido = {};
+const contOpciones = $('#opciones');
+for (const g of GRUPOS) {
+  elegido[g.clave] = POR_DEFECTO[g.clave];
   try {
-    localStorage.setItem('arco', id);
+    const guardado = localStorage.getItem(g.clave);
+    // Solo si sigue existiendo esa opción (antes había arcos armados que ya no están).
+    if (g.lista.some(([id]) => id === guardado)) elegido[g.clave] = guardado;
+  } catch {}
+  const fila = document.createElement('div');
+  fila.className = 'fila-opciones';
+  fila.innerHTML = `<span>${g.etiqueta}</span>` + g.lista.map(([id, nombre]) => `<button data-id="${id}">${nombre}</button>`).join('');
+  fila.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-id]');
+    if (b) elegir(g, b.dataset.id);
+  });
+  g.fila = fila;
+  contOpciones.appendChild(fila);
+}
+function elegir(g, id) {
+  elegido[g.clave] = id;
+  g.aplicar(id);
+  for (const b of g.fila.querySelectorAll('button')) b.classList.toggle('activo', b.dataset.id === id);
+  try {
+    localStorage.setItem(g.clave, id);
   } catch {}
 }
-contArcos.addEventListener('click', (e) => {
-  const b = e.target.closest('button[data-arco]');
-  if (b) ponerArco(b.dataset.arco);
-});
-ponerArco(arcoActual);
+const aplicarOpciones = () => GRUPOS.forEach((g) => elegir(g, elegido[g.clave]));
+aplicarOpciones();
 
 // Vistas de cámara con transición suave.
 const { arco } = CEREMONIA;
@@ -215,7 +229,7 @@ Promise.all([cieloListo, vegetacionLista, ceremoniaLista, todoCargado]).then(([c
   cielo = c;
   vegetacion = v;
   ceremonia = cer;
-  ponerArco(arcoActual);
+  aplicarOpciones();
   aplicarHora(leerHora());
   renderer.setAnimationLoop(cuadro);
   requestAnimationFrame(() => $('#carga').classList.add('oculta'));

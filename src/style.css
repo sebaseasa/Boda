@@ -56,17 +56,19 @@ html, body {
 }
 #vistas::-webkit-scrollbar { display: none; }
 
-#vistas button, #arcos button {
+#vistas button, .opciones button {
   flex: 0 0 auto; border: 0; border-radius: 999px; padding: 7px 12px;
   font: 500 0.85rem system-ui, sans-serif; cursor: pointer;
   background: rgba(251, 249, 244, 0.88); color: var(--tinta);
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
-#vistas button.activo, #arcos button.activo { background: var(--acento); color: #fff; }
+#vistas button.activo, .opciones button.activo { background: var(--acento); color: #fff; }
 
-#arcos { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-bottom: 8px; }
-#arcos::-webkit-scrollbar { display: none; }
-#arcos button { background: #ece6d8; }
+.opciones { margin-bottom: 6px; }
+.fila-opciones { display: flex; gap: 6px; align-items: center; overflow-x: auto; scrollbar-width: none; margin-bottom: 6px; }
+.fila-opciones::-webkit-scrollbar { display: none; }
+.fila-opciones > span { flex: 0 0 auto; font-size: 0.75rem; opacity: 0.7; min-width: 52px; }
+.opciones button { background: #ece6d8; padding: 6px 11px; font-size: 0.8rem; }
 
 #fps {
   position: fixed; z-index: 5; top: max(8px, env(safe-area-inset-top)); left: 8px;

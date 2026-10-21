@@ -55,23 +55,43 @@ function geometriaCojin() {
   return g;
 }
 
-export function posicionesSillas() {
+// Cada silla: posición y giro (0 = mirando hacia -Z, al altar).
+// rectas: filas paralelas. curvas: arcos alrededor del altar. v: filas en diagonal que se abren
+// hacia el altar, como en las referencias de Caro.
+export function posicionesSillas(distribucion = 'rectas') {
   const { invitados, sillasPorLado, primeraFilaZ, separacionFilas, separacionSillas, arco, pasillo } = CEREMONIA;
   const porFila = sillasPorLado * 2;
   const filas = Math.ceil(invitados / porFila);
+  const borde = pasillo.ancho / 2 + 0.3;
+  const centro = new THREE.Vector2(arco.x, arco.z + 1.2);
   const lista = [];
   for (let f = 0; f < filas; f++) {
     for (let k = 0; k < porFila && lista.length < invitados; k++) {
       const lado = k < sillasPorLado ? -1 : 1;
       const i = k % sillasPorLado;
-      lista.push(new THREE.Vector3(arco.x + lado * (pasillo.ancho / 2 + 0.3 + i * separacionSillas), 0, primeraFilaZ + f * separacionFilas));
+      if (distribucion === 'curvas') {
+        // Arco de radio creciente; las sillas se reparten por distancia a lo largo del arco.
+        const radio = primeraFilaZ - centro.y + f * separacionFilas;
+        const a = (borde + i * separacionSillas) / radio;
+        const x = centro.x + lado * Math.sin(a) * radio;
+        const z = centro.y + Math.cos(a) * radio;
+        lista.push({ x, z, giro: Math.atan2(-(centro.x - x), -(centro.y - z)) });
+      } else if (distribucion === 'v') {
+        const angulo = 0.35;
+        const x0 = arco.x + lado * borde;
+        const z0 = primeraFilaZ + f * separacionFilas * 1.05;
+        const d = i * separacionSillas;
+        lista.push({ x: x0 + lado * Math.cos(angulo) * d, z: z0 - Math.sin(angulo) * d, giro: lado * angulo });
+      } else {
+        lista.push({ x: arco.x + lado * (borde + i * separacionSillas), z: primeraFilaZ + f * separacionFilas, giro: 0 });
+      }
     }
   }
   return lista;
 }
 
-export function crearSillas(madera) {
-  const posiciones = posicionesSillas();
+export function crearSillas(madera, distribucion) {
+  const posiciones = posicionesSillas(distribucion);
   const cojin = new THREE.MeshStandardMaterial({ color: 0xeee6d6, roughness: 0.92 });
   const grupo = new THREE.Group();
   const m = new THREE.Matrix4();
@@ -80,7 +100,7 @@ export function crearSillas(madera) {
     posiciones.forEach((p, i) => {
       // Un poco de desorden: nadie alinea 50 sillas al milímetro.
       const giro = (Math.sin(i * 12.9898) * 43758.5453) % 1;
-      m.makeRotationY(giro * 0.06).setPosition(p.x + giro * 0.02, 0, p.z - giro * 0.03);
+      m.makeRotationY(p.giro + giro * 0.06).setPosition(p.x + giro * 0.02, 0, p.z - giro * 0.03);
       malla.setMatrixAt(i, m);
     });
     malla.castShadow = malla.receiveShadow = true;

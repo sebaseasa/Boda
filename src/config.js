@@ -42,9 +42,22 @@ export const ARCOS = [
   ['faroles', 'Faroles colgantes'],
 ];
 
+export const PASILLOS = [
+  ['flores', 'Pasto con flores y pétalos'],
+  ['piedra', 'Piedra con faroles'],
+];
+
+export const DISTRIBUCIONES = [
+  ['curvas', 'Curvas'],
+  ['v', 'En V'],
+  ['rectas', 'Rectas'],
+];
+
 export const POR_DEFECTO = {
   hora: 17.83, // 5:50 pm, beso de casados al atardecer
-  arco: 'guirnalda',
+  arco: 'telas',
+  pasillo: 'flores',
+  sillas: 'curvas',
 };
 
 export const HORA_MIN = 12; // la boda empieza al mediodía
