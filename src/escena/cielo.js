@@ -53,6 +53,7 @@ export async function crearCielo(escena, renderer, manager) {
     escena.environmentIntensity = luz;
     escena.fog.color.copy(COLOR_HORIZONTE).multiplyScalar(luz);
     nocturna.intensity = 0.25 * (1 - THREE.MathUtils.smoothstep(sol.altura, -12, -2));
+    return luz;
   }
 
   return { aplicarSol };

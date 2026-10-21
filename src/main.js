@@ -36,10 +36,11 @@ contenedor.appendChild(renderer.domElement);
 
 const escena = new THREE.Scene();
 const camara = new THREE.PerspectiveCamera(50, 1, 0.1, 700);
-camara.position.set(9, 3.2, 12);
+// Vista inicial parecida a las fotos de la finca: de frente al jacarandá y la palmera.
+camara.position.set(2.5, 1.7, -1);
 
 const controles = new OrbitControls(camara, renderer.domElement);
-controles.target.set(0, 1.2, -12);
+controles.target.set(0.5, 3.2, -19);
 controles.enableDamping = true;
 controles.dampingFactor = 0.08;
 controles.minDistance = 2;
@@ -68,7 +69,7 @@ manager.onProgress = (_url, cargados, total) => {
 const sol = crearSol(escena, calidad.actual);
 crearTerreno(escena, manager, renderer.capabilities.getMaxAnisotropy());
 const hierba = crearHierba(escena);
-crearVegetacion(escena);
+const vegetacionLista = crearVegetacion(escena, manager);
 const cieloListo = crearCielo(escena, renderer, manager);
 const todoCargado = new Promise((resolver) => (manager.onLoad = resolver));
 
@@ -94,9 +95,11 @@ function formatoHora(h) {
 }
 
 let cielo = null;
+let vegetacion = null;
 function aplicarHora(h) {
   sol.aplicarHora(h);
-  cielo?.aplicarSol(sol.estado);
+  const luz = cielo?.aplicarSol(sol.estado) ?? 1;
+  vegetacion?.aplicarLuz(luz);
   $('#hora-valor').textContent = formatoHora(h);
 }
 deslizador.addEventListener('input', () => aplicarHora(+deslizador.value));
@@ -131,8 +134,9 @@ function cuadro(ahora) {
   }
 }
 
-Promise.all([cieloListo, todoCargado]).then(([c]) => {
+Promise.all([cieloListo, vegetacionLista, todoCargado]).then(([c, v]) => {
   cielo = c;
+  vegetacion = v;
   aplicarHora(+deslizador.value);
   renderer.setAnimationLoop(cuadro);
   requestAnimationFrame(() => $('#carga').classList.add('oculta'));

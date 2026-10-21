@@ -54,6 +54,12 @@ html, body {
   background: rgba(0, 0, 0, 0.55); color: #fff; font: 600 0.75rem ui-monospace, monospace;
 }
 
+#creditos {
+  position: fixed; z-index: 5; top: max(8px, env(safe-area-inset-top)); right: 8px;
+  padding: 3px 8px; border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35); color: #fff; font-size: 0.72rem; text-decoration: none;
+}
+
 #error {
   position: fixed; inset: 0; z-index: 20;
   display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center;
