@@ -83,15 +83,18 @@ function aplicarCalidad(nivel) {
 }
 calidad.alCambiar(aplicarCalidad);
 
-// Hora del día.
+// Hora del día. El deslizador trabaja en minutos (de 5 en 5) para no arrastrar decimales.
 const deslizador = $('#hora');
-deslizador.min = HORA_MIN;
-deslizador.max = HORA_MAX;
-deslizador.value = POR_DEFECTO.hora;
+deslizador.min = HORA_MIN * 60;
+deslizador.max = HORA_MAX * 60;
+deslizador.step = 5;
+deslizador.value = Math.round((POR_DEFECTO.hora * 60) / 5) * 5;
+const leerHora = () => +deslizador.value / 60;
 
 function formatoHora(h) {
-  const hh = Math.floor(h);
-  const mm = Math.round((h - hh) * 60);
+  const minutos = Math.round(h * 60);
+  const hh = Math.floor(minutos / 60);
+  const mm = minutos % 60;
   const h12 = hh > 12 ? hh - 12 : hh;
   return `${h12}:${String(mm).padStart(2, '0')} ${hh >= 12 ? 'pm' : 'am'}`;
 }
@@ -106,7 +109,7 @@ function aplicarHora(h) {
   ceremonia?.aplicarLuz(luz);
   $('#hora-valor').textContent = formatoHora(h);
 }
-deslizador.addEventListener('input', () => aplicarHora(+deslizador.value));
+deslizador.addEventListener('input', () => aplicarHora(leerHora()));
 
 // Tipo de arco: se puede cambiar para comparar.
 const contArcos = $('#arcos');
@@ -211,8 +214,8 @@ Promise.all([cieloListo, vegetacionLista, ceremoniaLista, todoCargado]).then(([c
   vegetacion = v;
   ceremonia = cer;
   ponerArco(arcoActual);
-  aplicarHora(+deslizador.value);
+  aplicarHora(leerHora());
   renderer.setAnimationLoop(cuadro);
   requestAnimationFrame(() => $('#carga').classList.add('oculta'));
 });
-aplicarHora(+deslizador.value);
+aplicarHora(leerHora());

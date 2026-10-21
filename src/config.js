@@ -46,5 +46,5 @@ export const POR_DEFECTO = {
   arco: 'jardin',
 };
 
-export const HORA_MIN = 15;
+export const HORA_MIN = 12; // la boda empieza al mediodía
 export const HORA_MAX = 21;
