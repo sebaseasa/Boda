@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CEREMONIA } from '../config.js';
 import { arregloFloral, crearPetalos } from './flores.js';
+import { hortensias } from './hortensias.js';
 
 // Camino de piedra del pasillo y faroles con vela a los lados.
 
@@ -141,5 +142,74 @@ export function pasilloDeFlores(rosaGeo, aleatorio) {
       aleatorio,
     ),
   );
+  return grupo;
+}
+
+// Alfombra blanca con guirnaldas continuas de flores a ras del suelo a ambos lados, como en la
+// referencia de Caro: hortensias y rosas apretadas, con follaje que se sale hacia el pasto.
+export const ANCHO_ALFOMBRA = 1.1;
+export function pasilloDeAlfombra(rosaGeo, aleatorio) {
+  const { arco, pasillo } = CEREMONIA;
+  const grupo = new THREE.Group();
+  const largo = pasillo.hastaZ - pasillo.desdeZ;
+  // La tela no queda perfectamente plana: pequeñas ondas y bordes levantados.
+  const geo = new THREE.PlaneGeometry(ANCHO_ALFOMBRA, largo, 8, 60);
+  geo.rotateX(-Math.PI / 2);
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i);
+    const z = p.getZ(i);
+    const borde = Math.abs(x) / (ANCHO_ALFOMBRA / 2);
+    p.setY(i, 0.012 + Math.sin(z * 2.3 + x * 4) * 0.003 + Math.pow(borde, 6) * 0.006);
+  }
+  geo.computeVertexNormals();
+  const alfombra = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xf7f5ef, roughness: 0.92 }));
+  alfombra.position.set(arco.x, 0, (pasillo.desdeZ + pasillo.hastaZ) / 2);
+  alfombra.receiveShadow = true;
+  grupo.add(alfombra);
+
+  const cabezas = [];
+  const puntos = [];
+  for (const lado of [-1, 1]) {
+    const x0 = arco.x + lado * (ANCHO_ALFOMBRA / 2 + 0.14);
+    for (let z = pasillo.desdeZ + 0.1; z < pasillo.hastaZ; z += 0.12) {
+      for (let k = 0; k < 2; k++) {
+        cabezas.push({
+          p: new THREE.Vector3(x0 + (aleatorio() - 0.5) * 0.18, 0.07 + aleatorio() * 0.05, z + (aleatorio() - 0.5) * 0.1),
+          n: new THREE.Vector3(lado * (aleatorio() * 0.5), 1, (aleatorio() - 0.5) * 0.4).normalize(),
+          s: 0.75 + aleatorio() * 0.35,
+        });
+      }
+      if (aleatorio() < 0.55) {
+        puntos.push({ p: new THREE.Vector3(x0 + lado * 0.04, 0.1, z), n: new THREE.Vector3(lado * 0.3, 1, 0).normalize() });
+      }
+    }
+  }
+  grupo.add(hortensias(cabezas, aleatorio));
+  // Rosas y follaje entre las hortensias; el follaje se abre hacia el pasto.
+  grupo.add(arregloFloral(puntos, { rosaGeo, aleatorio, rosas: 0.8, radioFollaje: 0.22, densidad: 28, tamanoRosa: 0.08 }));
+  grupo.add(
+    crearPetalos(
+      [{ x0: arco.x - ANCHO_ALFOMBRA / 2, x1: arco.x + ANCHO_ALFOMBRA / 2, z0: pasillo.desdeZ, z1: pasillo.desdeZ + 2.5, cantidad: 260 }],
+      aleatorio,
+    ),
+  );
+  return grupo;
+}
+
+// Bolas de flores en el pasto, al final de cada fila junto al pasillo.
+export function bolasDeFlores(centros, rosaGeo, aleatorio) {
+  const cabezas = [];
+  const puntos = [];
+  for (const c of centros) {
+    for (let k = 0; k < 14; k++) {
+      const n = new THREE.Vector3(aleatorio() * 2 - 1, aleatorio() * 1.2 - 0.2, aleatorio() * 2 - 1).normalize();
+      cabezas.push({ p: c.clone().addScaledVector(n, 0.15).setY(Math.max(0.06, c.y + n.y * 0.15)), n, s: 0.85 + aleatorio() * 0.3 });
+    }
+    puntos.push({ p: c.clone(), n: new THREE.Vector3(0, 0.6, 1).normalize() });
+  }
+  const grupo = new THREE.Group();
+  grupo.add(hortensias(cabezas, aleatorio));
+  grupo.add(arregloFloral(puntos, { rosaGeo, aleatorio, rosas: 1, radioFollaje: 0.2, densidad: 40, tamanoRosa: 0.08 }));
   return grupo;
 }

@@ -10,7 +10,7 @@ import {
   ToneMappingEffect,
   ToneMappingMode,
 } from 'postprocessing';
-import { POR_DEFECTO, HORA_MIN, HORA_MAX, ARCOS, PASILLOS, DISTRIBUCIONES, INVITADOS, CEREMONIA } from './config.js';
+import { POR_DEFECTO, HORA_MIN, HORA_MAX, ARCOS, PASILLOS, DISTRIBUCIONES, MODELOS_SILLA, INVITADOS, CEREMONIA } from './config.js';
 import { crearCalidad } from './calidad.js';
 import { crearCielo } from './escena/cielo.js';
 import { crearSol } from './escena/sol.js';
@@ -122,6 +122,7 @@ const GRUPOS = [
   { clave: 'arco', etiqueta: 'Árboles', lista: ARCOS, aplicar: (id) => ceremonia?.ponerArco(id) },
   { clave: 'pasillo', etiqueta: 'Pasillo', lista: PASILLOS, aplicar: (id) => ceremonia?.ponerPasillo(id) },
   { clave: 'sillas', etiqueta: 'Sillas', lista: DISTRIBUCIONES, aplicar: (id) => ceremonia?.ponerSillas(id) },
+  { clave: 'modeloSilla', etiqueta: 'Modelo', lista: MODELOS_SILLA, aplicar: (id) => ceremonia?.ponerModeloSillas(id) },
   { clave: 'invitados', etiqueta: 'Invitados', lista: INVITADOS, aplicar: (id) => ceremonia?.mostrarInvitados(id === 'si') },
 ];
 const elegido = {};
@@ -165,9 +166,10 @@ const EXTRAS = [
   ['luces', 'Cortina de luces'],
   ['velas', 'Velas'],
 ];
-const extras = { luces: false, velas: false };
+// Las velas en vidrio también van de día, al pie del altar (como en la referencia de Caro).
+const extras = { luces: false, velas: true };
 try {
-  Object.assign(extras, JSON.parse(localStorage.getItem('extras-dia') || '{}'));
+  Object.assign(extras, JSON.parse(localStorage.getItem('extras-v3') || '{}'));
 } catch {}
 const filaExtras = document.createElement('div');
 filaExtras.className = 'fila-opciones';
@@ -177,7 +179,7 @@ function aplicarExtras() {
   ceremonia?.ponerExtras(extras);
   for (const b of filaExtras.querySelectorAll('button')) b.classList.toggle('activo', extras[b.dataset.id]);
   try {
-    localStorage.setItem('extras-dia', JSON.stringify(extras));
+    localStorage.setItem('extras-v3', JSON.stringify(extras));
   } catch {}
 }
 filaExtras.addEventListener('click', (e) => {
