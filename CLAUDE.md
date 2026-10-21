@@ -37,7 +37,7 @@ Lo trabajo desde el celular (Samsung Galaxy Z Fold 5) y se publica en GitHub Pag
 - Concepto: íntima, natural, elegante, atemporal, significativa.
 - Paleta: beige, verde oliva / salvia, marfil y dorado.
 - Lo que NO buscamos: fiesta grande, barra libre, decoración recargada, evento tradicional.
-- Ceremonia: el arco son los propios árboles (decisión de Sebas): el altar va entre el tronco del jacarandá y el de la palmera, bajo sus copas, y se decoran los árboles (no se arma un arco aparte). Camino de piedra con faroles, 50 sillas crossback de madera con cojín.
+- Ceremonia: el arco son los propios árboles (decisión de Sebas): el altar va entre el tronco del jacarandá y el de la palmera, bajo sus copas, y se decoran los árboles (no se arma un arco aparte) con un arco de flores blancas (hortensias, rosas, alhelí, gypsophila) que sigue el contorno de los árboles. Nada de telas colgantes (no le gustan a Sebas). Camino de piedra con faroles, 50 sillas crossback de madera con cojín.
 - Recepción (según la prueba de mesa): mesas redondas con mantel marfil, plato base de vidrio con borde dorado texturizado, servilleta verde satinada con argolla dorada, copa verde tallada + copa de vino + copa de champán, cubiertos dorados, centro bajo de rosas blancas, alhelí y gypsophila dorada con candeleros dorados altos y caminos de tela verde arrugada. Sillas Tiffany doradas con faja de chifón marfil y lazo.
 - Extras: letrero "Bienvenidos a nuestro comienzo", lounge con fogata y sillones de ratán, faroles colgando del árbol grande, luces colgantes.
 

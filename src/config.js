@@ -36,9 +36,9 @@ export const CEREMONIA = {
 
 // Formas de decorar los árboles que hacen de arco.
 export const ARCOS = [
+  ['flores', 'Arco de flores'],
   ['base', 'Flores en la base'],
-  ['guirnalda', 'Guirnalda de flores'],
-  ['telas', 'Telas y flores'],
+  ['guirnalda', 'Guirnalda delgada'],
   ['faroles', 'Faroles colgantes'],
 ];
 
@@ -60,7 +60,7 @@ export const INVITADOS = [
 
 export const POR_DEFECTO = {
   hora: 12.5, // 12:30 pm, en plena ceremonia (12:00 a 1:30 pm)
-  arco: 'telas',
+  arco: 'flores',
   pasillo: 'flores',
   sillas: 'curvas',
   invitados: 'si',

@@ -160,13 +160,12 @@ function elegir(g, id) {
   } catch {}
 }
 // Extras que se prenden y apagan por separado.
-// La ceremonia es al mediodía: por defecto va la nube de flores; luces y velas quedan para la noche.
+// La ceremonia es al mediodía: luces y velas quedan apagadas por defecto, para la noche.
 const EXTRAS = [
-  ['nube', 'Nube de flores'],
   ['luces', 'Cortina de luces'],
   ['velas', 'Velas'],
 ];
-const extras = { nube: true, luces: false, velas: false };
+const extras = { luces: false, velas: false };
 try {
   Object.assign(extras, JSON.parse(localStorage.getItem('extras-dia') || '{}'));
 } catch {}
