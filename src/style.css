@@ -1,0 +1,62 @@
+:root {
+  --fondo: #20261a;
+  --superficie: rgba(251, 249, 244, 0.9);
+  --tinta: #2c3524;
+  --acento: #55693f;
+  --dorado: #c9a24a;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--fondo);
+  color: var(--tinta);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#stage { position: fixed; inset: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+/* Pantalla de carga */
+#carga {
+  position: fixed; inset: 0; z-index: 10;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  background: var(--fondo); color: #f1ebdf;
+  transition: opacity 0.8s;
+}
+#carga.oculta { opacity: 0; pointer-events: none; }
+.carga-titulo { font-family: Georgia, "Times New Roman", serif; font-style: italic; font-size: 2rem; color: var(--dorado); }
+.carga-barra { width: min(260px, 70vw); height: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
+.carga-barra i { display: block; height: 100%; width: 0; background: var(--dorado); transition: width 0.2s; }
+#carga-texto { font-size: 0.9rem; opacity: 0.8; }
+
+/* Control de hora */
+#hora-panel {
+  position: fixed; z-index: 5;
+  left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  max-width: 420px; margin: 0 auto;
+  padding: 10px 14px 6px; border-radius: 14px;
+  background: var(--superficie);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+}
+.hora-fila { display: flex; justify-content: space-between; align-items: baseline; }
+.hora-etiqueta { font-size: 0.85rem; opacity: 0.7; }
+#hora-valor { font-weight: 650; font-size: 1.05rem; }
+#hora { width: 100%; accent-color: var(--acento); }
+
+#fps {
+  position: fixed; z-index: 5; top: max(8px, env(safe-area-inset-top)); left: 8px;
+  padding: 3px 8px; border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55); color: #fff; font: 600 0.75rem ui-monospace, monospace;
+}
+
+#error {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center;
+  background: var(--fondo); color: #f1ebdf;
+}
+#error[hidden], #fps[hidden] { display: none; }
