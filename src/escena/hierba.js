@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { MANCHAS_GLSL } from './manchas.js';
 
 // Hierba instanciada: cada hoja es un mismo triángulo alargado que el shader coloca, dobla y mueve
 // con el viento. El césped se divide en baldosas; las lejanas dibujan menos hojas y desde
@@ -40,7 +41,7 @@ function atributosInstancia(cantidad, aleatorio) {
     desplazamiento[i * 3] = (aleatorio() - 0.5) * BALDOSA;
     desplazamiento[i * 3 + 1] = (aleatorio() - 0.5) * BALDOSA;
     desplazamiento[i * 3 + 2] = aleatorio() * Math.PI * 2;
-    parametros[i * 4] = 0.06 + Math.pow(aleatorio(), 1.5) * 0.09;
+    parametros[i * 4] = 0.045 + Math.pow(aleatorio(), 1.5) * 0.08;
     parametros[i * 4 + 1] = 0.012 + aleatorio() * 0.01;
     parametros[i * 4 + 2] = (aleatorio() - 0.3) * 0.6;
     parametros[i * 4 + 3] = aleatorio();
@@ -70,6 +71,8 @@ function materialHierba(tiempo) {
         attribute vec4 aParametros;
         varying float vAltura;
         varying float vVariacion;
+        varying float vSeco;
+        ${MANCHAS_GLSL}
         vec2 girar(vec2 v, float a) { float c = cos(a), s = sin(a); return vec2(c * v.x - s * v.y, s * v.x + c * v.y); }`,
       )
       .replace(
@@ -94,6 +97,9 @@ function materialHierba(tiempo) {
         transformed.xz = girar(transformed.xz, aDesplazamiento.z);
         transformed.xz += aDesplazamiento.xy;
         vec2 mundo = (modelMatrix * vec4(transformed, 1.0)).xz;
+        vSeco = manchaSeca(mundo);
+        // En las zonas secas la hierba es más baja.
+        transformed.y *= mix(1.0, 0.7, vSeco);
         float rafaga = sin(uTiempo * 1.3 + mundo.x * 0.28 + mundo.y * 0.17) * 0.5 + 0.5;
         float temblor = sin(uTiempo * 4.1 + mundo.x * 2.3 + mundo.y * 1.9 + aParametros.w * 6.28);
         float doblez = y * y * aParametros.x * (0.35 * rafaga + 0.08 * temblor);
@@ -105,13 +111,18 @@ function materialHierba(tiempo) {
         '#include <common>',
         /* glsl */ `#include <common>
         varying float vAltura;
-        varying float vVariacion;`,
+        varying float vVariacion;
+        varying float vSeco;`,
       )
       .replace(
         '#include <color_fragment>',
         /* glsl */ `
-        vec3 raiz = vec3(0.05, 0.075, 0.02);
-        vec3 punta = mix(vec3(0.11, 0.16, 0.04), vec3(0.17, 0.19, 0.06), vVariacion);
+        vec3 raiz = mix(vec3(0.06, 0.075, 0.025), vec3(0.15, 0.12, 0.06), vSeco);
+        vec3 puntaVerde = mix(vec3(0.08, 0.12, 0.03), vec3(0.14, 0.17, 0.05), vVariacion);
+        vec3 puntaSeca = mix(vec3(0.24, 0.2, 0.09), vec3(0.34, 0.28, 0.14), vVariacion);
+        // Aun en lo seco quedan algunas hojas verdes, y viceversa.
+        float mezcla = clamp(vSeco + (vVariacion - 0.5) * 0.7, 0.0, 1.0);
+        vec3 punta = mix(puntaVerde, puntaSeca, mezcla);
         diffuseColor.rgb *= mix(raiz, punta, smoothstep(0.0, 1.0, vAltura));`,
       )
       .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = faceDirection * normal;')

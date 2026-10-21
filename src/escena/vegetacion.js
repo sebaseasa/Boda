@@ -1,9 +1,15 @@
 import * as THREE from 'three';
-import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { DISTRIBUCION } from '../config.js';
 
-// Marcadores de posición del árbol grande y la palmera, a su escala aproximada.
-// Se reemplazarán por modelos reales (o por el escaneo del jardín).
+// Jacarandá y palmera: modelos de PlantCatalog (Sketchfab, CC BY), aligerados con
+// herramientas/preparar-modelos.mjs. Alturas medidas a ojo en las fotos de la finca.
+const MODELOS = {
+  arbol: { archivo: 'modelos/jacaranda.glb', alto: 11, giro: 0.6 },
+  palmera: { archivo: 'modelos/palmera.glb', alto: 9.5, giro: 2.1 },
+};
 
 function generadorAleatorio(semilla) {
   let s = semilla >>> 0;
@@ -13,151 +19,211 @@ function generadorAleatorio(semilla) {
   };
 }
 
-// Deforma una esfera para que la copa no se vea perfecta. El desvío depende solo de la posición,
-// así los vértices compartidos se mueven juntos y la superficie no se rompe.
-function grumo(radio, aleatorio) {
-  let g = new THREE.IcosahedronGeometry(radio, 3);
-  g.deleteAttribute('uv');
-  g.deleteAttribute('normal');
-  g = mergeVertices(g);
-  const p = g.attributes.position;
-  const v = new THREE.Vector3();
-  const fase = aleatorio() * 10;
-  for (let i = 0; i < p.count; i++) {
-    v.fromBufferAttribute(p, i);
-    const u = v.clone().divideScalar(radio);
-    const n = Math.sin(u.x * 4.1 + fase) * Math.sin(u.y * 3.7 + fase * 0.5) * Math.sin(u.z * 4.3 + fase * 0.3);
-    const fino = Math.sin(u.x * 11 + u.z * 7 + fase) * Math.sin(u.y * 9 - u.x * 5);
-    v.multiplyScalar(1 + n * 0.16 + fino * 0.05);
-    p.setXYZ(i, v.x, v.y, v.z);
+async function cargarModelo(cargador, { archivo, alto, giro }, posicion) {
+  const gltf = await cargador.loadAsync(archivo);
+  const modelo = gltf.scene;
+  const caja = new THREE.Box3().setFromObject(modelo);
+  const escala = alto / (caja.max.y - caja.min.y);
+  modelo.scale.setScalar(escala);
+  modelo.rotation.y = giro;
+  // Apoyar la base en el suelo y centrar el tronco en la posición indicada.
+  const centro = caja.getCenter(new THREE.Vector3()).multiplyScalar(escala);
+  const pivote = new THREE.Group();
+  modelo.position.set(-centro.x, -caja.min.y * escala, -centro.z);
+  pivote.add(modelo);
+  pivote.position.set(posicion.x, 0, posicion.z);
+  modelo.traverse((o) => {
+    if (!o.isMesh) return;
+    o.castShadow = true;
+    o.receiveShadow = true;
+    const m = o.material;
+    if (m.alphaTest > 0) m.side = THREE.DoubleSide;
+    m.envMapIntensity = 0.7;
+  });
+  return pivote;
+}
+
+// Follaje hecho con tarjetas de hoja (la misma textura del jacarandá) repartidas sobre la superficie
+// de un volumen. Las normales apuntan hacia afuera del centro, así el bulto se ilumina como una copa.
+function tarjetasFollaje(volumenes, porM2, tamano, aleatorio) {
+  const posiciones = [];
+  const normales = [];
+  const uvs = [];
+  const indices = [];
+  const centro = new THREE.Vector3();
+  const punto = new THREE.Vector3();
+  const normal = new THREE.Vector3();
+  const eje1 = new THREE.Vector3();
+  const eje2 = new THREE.Vector3();
+  for (const { c, r } of volumenes) {
+    centro.copy(c);
+    const area = 4 * Math.PI * Math.pow((r.x * r.y + r.x * r.z + r.y * r.z) / 3, 1);
+    const cantidad = Math.round(area * porM2);
+    for (let i = 0; i < cantidad; i++) {
+      // Punto en la superficie del elipsoide, con algo de profundidad hacia adentro.
+      normal.set(aleatorio() * 2 - 1, aleatorio() * 2 - 1, aleatorio() * 2 - 1).normalize();
+      const hondo = 0.75 + aleatorio() * 0.3;
+      punto.set(normal.x * r.x, normal.y * r.y, normal.z * r.z).multiplyScalar(hondo).add(centro);
+      if (punto.y < 0.05) continue;
+      const s = tamano * (0.7 + aleatorio() * 0.6);
+      eje1.set(aleatorio() - 0.5, aleatorio() - 0.5, aleatorio() - 0.5).normalize();
+      eje2.crossVectors(normal, eje1).normalize();
+      eje1.crossVectors(eje2, normal).normalize();
+      const base = posiciones.length / 3;
+      for (const [u, v] of [[0, 0], [1, 0], [1, 1], [0, 1]]) {
+        posiciones.push(
+          punto.x + (eje1.x * (u - 0.5) + eje2.x * (v - 0.5) * 2) * s,
+          punto.y + (eje1.y * (u - 0.5) + eje2.y * (v - 0.5) * 2) * s,
+          punto.z + (eje1.z * (u - 0.5) + eje2.z * (v - 0.5) * 2) * s,
+        );
+        normales.push(normal.x, normal.y, normal.z);
+        uvs.push(u, v);
+      }
+      indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    }
   }
-  g.computeVertexNormals();
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(posiciones, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(normales, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  g.setIndex(indices);
   return g;
 }
 
-function arbolGrande() {
-  const aleatorio = generadorAleatorio(5);
-  const grupo = new THREE.Group();
-  const corteza = new THREE.MeshStandardMaterial({ color: 0x5b4a3c, roughness: 0.95 });
-  const hojas = new THREE.MeshStandardMaterial({ color: 0x3f6a2c, roughness: 0.9 });
-
-  // Varios troncos que salen de la base y se abren hacia arriba.
-  const troncos = [];
-  const puntas = [];
-  for (let i = 0; i < 5; i++) {
-    const a = (i / 5) * Math.PI * 2 + aleatorio() * 0.6;
-    const apertura = 0.18 + aleatorio() * 0.22;
-    const largo = 5.2 + aleatorio() * 1.6;
-    const pts = [0, 0.33, 0.66, 1].map((t) => {
-      const r = Math.sin(apertura) * largo * t * (0.6 + 0.4 * t);
-      return new THREE.Vector3(Math.cos(a) * (0.15 + r), t * largo * Math.cos(apertura * 0.6), Math.sin(a) * (0.15 + r));
-    });
-    const curva = new THREE.CatmullRomCurve3(pts);
-    const tubo = new THREE.TubeGeometry(curva, 12, 0.2, 8, false);
-    // Afinar hacia la punta.
-    const p = tubo.attributes.position;
-    const v = new THREE.Vector3();
-    for (let j = 0; j < p.count; j++) {
-      const t = Math.floor(j / 9) / 12;
-      const c = curva.getPointAt(Math.min(t, 1));
-      v.fromBufferAttribute(p, j).sub(c).multiplyScalar(1.25 - t * 0.75).add(c);
-      p.setXYZ(j, v.x, v.y, v.z);
-    }
-    tubo.computeVertexNormals();
-    troncos.push(tubo);
-    puntas.push(pts[3]);
-  }
-  const mallaTroncos = new THREE.Mesh(mergeGeometries(troncos), corteza);
-  mallaTroncos.castShadow = mallaTroncos.receiveShadow = true;
-  grupo.add(mallaTroncos);
-
-  // Copa ancha y algo plana, hecha de grumos alrededor de las puntas de los troncos.
-  const grumos = [];
-  for (const punta of puntas) {
-    for (let k = 0; k < 4; k++) {
-      const g = grumo(1.3 + aleatorio() * 0.9, aleatorio);
-      g.scale(1.25, 0.75, 1.25);
-      g.translate(
-        punta.x * 1.15 + (aleatorio() - 0.5) * 2.4,
-        punta.y + (aleatorio() - 0.3) * 1.4,
-        punta.z * 1.15 + (aleatorio() - 0.5) * 2.4,
-      );
-      grumos.push(g);
-    }
-  }
-  const copa = new THREE.Mesh(mergeGeometries(grumos), hojas);
-  copa.castShadow = copa.receiveShadow = true;
-  grupo.add(copa);
-  return grupo;
+// Núcleo oscuro que tapa los huecos entre tarjetas.
+function nucleo(volumenes, material, escala = 0.82) {
+  const piezas = volumenes.map(({ c, r }) => {
+    const g = new THREE.IcosahedronGeometry(1, 1);
+    g.deleteAttribute('uv');
+    g.scale(r.x * escala, r.y * escala, r.z * escala);
+    g.translate(c.x, c.y, c.z);
+    return g;
+  });
+  return new THREE.Mesh(mergeGeometries(piezas), material);
 }
 
-function palmera() {
-  const aleatorio = generadorAleatorio(11);
+function materialHojas(base, tono) {
+  const m = base.clone();
+  m.color.set(tono);
+  m.side = THREE.DoubleSide;
+  m.alphaTest = 0.5;
+  m.transparent = false;
+  return m;
+}
+
+// Seto que cierra el fondo del jardín, como en las fotos.
+function seto(hoja, aleatorio) {
+  const volumenes = [];
+  for (let x = -34; x < 20; x += 1.4) {
+    const alto = 1.3 + aleatorio() * 0.6;
+    volumenes.push({
+      c: new THREE.Vector3(x, alto * 0.85, -31 - aleatorio() * 1.2),
+      r: new THREE.Vector3(1.3, alto, 1.1),
+    });
+  }
   const grupo = new THREE.Group();
-  const corteza = new THREE.MeshStandardMaterial({ color: 0x75644f, roughness: 1 });
-  const verde = new THREE.MeshStandardMaterial({ color: 0x7d9257, roughness: 0.85, side: THREE.DoubleSide });
-  const seca = new THREE.MeshStandardMaterial({ color: 0x9c8356, roughness: 1, side: THREE.DoubleSide });
-
-  const alto = 6.2;
-  const curva = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(0.08, alto * 0.35, 0),
-    new THREE.Vector3(0.22, alto * 0.7, 0.05),
-    new THREE.Vector3(0.38, alto, 0.08),
-  ]);
-  const tronco = new THREE.TubeGeometry(curva, 24, 0.24, 10, false);
-  // Anillos del tronco.
-  const p = tronco.attributes.position;
-  const v = new THREE.Vector3();
-  for (let j = 0; j < p.count; j++) {
-    const t = Math.floor(j / 11) / 24;
-    const c = curva.getPointAt(Math.min(t, 1));
-    const anillo = 1 + 0.06 * Math.abs(Math.sin(t * 24 * Math.PI));
-    v.fromBufferAttribute(p, j).sub(c).multiplyScalar((1.15 - t * 0.3) * anillo).add(c);
-    p.setXYZ(j, v.x, v.y, v.z);
-  }
-  tronco.computeVertexNormals();
-  const mallaTronco = new THREE.Mesh(tronco, corteza);
-  mallaTronco.castShadow = mallaTronco.receiveShadow = true;
-  grupo.add(mallaTronco);
-
-  // Hojas: tiras curvadas hacia abajo, más angostas en la punta.
-  const copa = curva.getPointAt(1);
-  const verdes = [];
-  const secas = [];
-  for (let i = 0; i < 26; i++) {
-    const esSeca = i >= 20;
-    const largo = 2.6 + aleatorio() * 0.9;
-    const g = new THREE.PlaneGeometry(0.55, largo, 1, 10);
-    g.translate(0, largo / 2, 0);
-    const pos = g.attributes.position;
-    const caida = esSeca ? 2.4 : 0.9 + aleatorio() * 0.6;
-    for (let j = 0; j < pos.count; j++) {
-      const y = pos.getY(j);
-      const t = y / largo;
-      pos.setX(j, pos.getX(j) * (1 - t * 0.85));
-      // Arco: al girarla, este desvío hace que la hoja caiga hacia la punta.
-      pos.setZ(j, t * t * caida);
-    }
-    g.rotateX(Math.PI / 2 - (esSeca ? 0.2 : 0.55 + aleatorio() * 0.35));
-    g.rotateY((i / 20) * Math.PI * 2 + aleatorio() * 0.3);
-    g.translate(copa.x, copa.y - (esSeca ? 0.35 : 0), copa.z);
-    g.computeVertexNormals();
-    (esSeca ? secas : verdes).push(g);
-  }
-  for (const [lista, material] of [[verdes, verde], [secas, seca]]) {
-    const m = new THREE.Mesh(mergeGeometries(lista), material);
+  const interior = nucleo(volumenes, new THREE.MeshStandardMaterial({ color: 0x0d140a, roughness: 1 }));
+  const hojas = new THREE.Mesh(tarjetasFollaje(volumenes, 9, 0.35, aleatorio), materialHojas(hoja, 0x4c5e3a));
+  for (const m of [interior, hojas]) {
     m.castShadow = m.receiveShadow = true;
     grupo.add(m);
   }
   return grupo;
 }
 
-export function crearVegetacion(escena) {
-  const arbol = arbolGrande();
-  arbol.position.set(DISTRIBUCION.arbol.x, 0, DISTRIBUCION.arbol.z);
-  const palma = palmera();
-  palma.position.set(DISTRIBUCION.palmera.x, 0, DISTRIBUCION.palmera.z);
-  escena.add(arbol, palma);
-  return { arbol, palmera: palma };
+// Árboles altos del fondo (eucaliptos y pinos en las fotos): tronco y copa de tarjetas de hoja.
+function arbolesFondo(hoja, aleatorio) {
+  const troncos = [];
+  const volumenes = [];
+  const sitios = [
+    [15, -33], [21, -36], [27, -32], [33, -38], [10, -41], [38, -31], [44, -36],
+    [-27, -40], [-18, -44], [-7, -46], [4, -47], [-36, -45], [-13, -55], [0, -58], [12, -54], [24, -50], [-24, -56], [36, -48],
+  ];
+  for (const [x, z] of sitios) {
+    const alto = 13 + aleatorio() * 9;
+    const t = new THREE.CylinderGeometry(0.16, 0.32, alto * 0.75, 7);
+    t.deleteAttribute('uv');
+    t.translate(x, alto * 0.375, z);
+    troncos.push(t);
+    // Copa irregular: varios grupos de ramas a distintas alturas y hacia distintos lados.
+    for (let k = 0; k < 6; k++) {
+      const r = 1.3 + aleatorio() * 1.3;
+      const a = aleatorio() * Math.PI * 2;
+      const d = 0.5 + aleatorio() * 2.2;
+      volumenes.push({
+        c: new THREE.Vector3(x + Math.cos(a) * d, alto * (0.45 + aleatorio() * 0.5), z + Math.sin(a) * d),
+        r: new THREE.Vector3(r * 1.2, r * 0.9, r * 1.2),
+      });
+    }
+  }
+  const grupo = new THREE.Group();
+  const tronco = new THREE.Mesh(mergeGeometries(troncos), new THREE.MeshStandardMaterial({ color: 0x4a3d30, roughness: 1 }));
+  const interior = nucleo(volumenes, new THREE.MeshStandardMaterial({ color: 0x1b2615, roughness: 1 }), 0.65);
+  const hojas = new THREE.Mesh(tarjetasFollaje(volumenes, 4, 0.7, aleatorio), materialHojas(hoja, 0x5d6f4d));
+  for (const m of [tronco, interior, hojas]) {
+    m.castShadow = true;
+    grupo.add(m);
+  }
+  return grupo;
+}
+
+// Anillo de siluetas en el horizonte: montañas de los valles y, más cerca, la línea de árboles
+// de las fincas vecinas. Las montañas no usan la niebla de three.js: su tono azulado de lejanía
+// va en el propio color.
+function horizonte(aleatorio, { radio, base, ondas, color, niebla }) {
+  const segmentos = 240;
+  const posiciones = [];
+  const indices = [];
+  const fases = ondas.map(() => aleatorio() * 10);
+  for (let i = 0; i <= segmentos; i++) {
+    const a = (i / segmentos) * Math.PI * 2;
+    let h = base;
+    ondas.forEach(([frecuencia, amplitud], k) => {
+      h += amplitud * (0.5 + 0.5 * Math.sin(a * frecuencia + fases[k]));
+    });
+    const x = Math.cos(a) * radio;
+    const z = Math.sin(a) * radio;
+    posiciones.push(x, -2, z, x, h, z);
+    if (i < segmentos) {
+      const b = i * 2;
+      indices.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(posiciones, 3));
+  g.setIndex(indices);
+  return new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color, fog: niebla, side: THREE.DoubleSide }));
+}
+
+export async function crearVegetacion(escena, manager) {
+  const cargador = new GLTFLoader(manager).setPath(import.meta.env.BASE_URL).setMeshoptDecoder(MeshoptDecoder);
+  const aleatorio = generadorAleatorio(5);
+  const [arbol, palmera] = await Promise.all([
+    cargarModelo(cargador, MODELOS.arbol, DISTRIBUCION.arbol),
+    cargarModelo(cargador, MODELOS.palmera, DISTRIBUCION.palmera),
+  ]);
+  // Material de las hojas del jacarandá, reutilizado para el seto y los árboles del fondo.
+  let hoja = null;
+  arbol.traverse((o) => {
+    if (!hoja && o.isMesh && /leaf_0/i.test(o.material.name)) hoja = o.material;
+  });
+  const cerros = horizonte(aleatorio, {
+    radio: 320, base: 22, color: 0x5d6a7c, niebla: false,
+    ondas: [[2, 40], [5, 18], [13, 8]],
+  });
+  const arboleda = horizonte(aleatorio, {
+    radio: 140, base: 2.5, color: 0x1c2817, niebla: true,
+    ondas: [[23, 3], [61, 2], [137, 1.5]],
+  });
+  escena.add(arbol, palmera, seto(hoja, aleatorio), arbolesFondo(hoja, aleatorio), cerros, arboleda);
+
+  // Las montañas se oscurecen con el cielo al caer la noche.
+  const colorCerros = cerros.material.color.clone();
+  return {
+    arbol,
+    palmera,
+    aplicarLuz(luz) {
+      cerros.material.color.copy(colorCerros).multiplyScalar(luz);
+    },
+  };
 }
