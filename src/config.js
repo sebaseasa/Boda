@@ -43,8 +43,14 @@ export const ARCOS = [
 ];
 
 export const PASILLOS = [
+  ['alfombra', 'Alfombra blanca con flores'],
   ['flores', 'Pasto con flores y pétalos'],
   ['piedra', 'Piedra con faroles'],
+];
+
+export const MODELOS_SILLA = [
+  ['crossback', 'Crossback de madera'],
+  ['plegable', 'Plegable blanca'],
 ];
 
 export const DISTRIBUCIONES = [
@@ -61,7 +67,8 @@ export const INVITADOS = [
 export const POR_DEFECTO = {
   hora: 12.5, // 12:30 pm, en plena ceremonia (12:00 a 1:30 pm)
   arco: 'flores',
-  pasillo: 'flores',
+  pasillo: 'alfombra',
+  modeloSilla: 'crossback',
   sillas: 'curvas',
   invitados: 'si',
 };

@@ -96,8 +96,10 @@ function arcoDeFlores(r) {
     lado2.crossVectors(tangente, lado1).normalize();
     // Grosor: más abundante al pie de los troncos, más liviano arriba.
     const pie = Math.max(1 - c.y / 1.6, 0);
-    const radio = 0.42 + pie * 0.6;
-    const porSeccion = 4 + Math.round(pie * 6);
+    // Arriba, sobre los novios, también más tupido (como la referencia de Caro).
+    const cima = THREE.MathUtils.smoothstep(c.y, 2.9, 3.6);
+    const radio = 0.42 + pie * 0.6 + cima * 0.18;
+    const porSeccion = 4 + Math.round(pie * 6 + cima * 3);
     for (let k = 0; k < porSeccion; k++) {
       const a = r.aleatorio() * Math.PI * 2;
       const d = 0.55 + r.aleatorio() * 0.45;

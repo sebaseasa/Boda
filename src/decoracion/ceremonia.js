@@ -4,12 +4,13 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { CEREMONIA } from '../config.js';
 import { CONSTRUCTORES } from './arcos.js';
 import { crearSillas } from './sillas.js';
-import { crearPiedras, crearFaroles, pasilloDeFlores } from './pasillo.js';
+import { crearPiedras, crearFaroles, pasilloDeFlores, pasilloDeAlfombra, bolasDeFlores, ANCHO_ALFOMBRA } from './pasillo.js';
+import { hortensias } from './hortensias.js';
 import { crearNovios } from './novios.js';
 import { crearInvitados } from './invitados.js';
 import { cortinaDeLuces, velasEnVidrio, grupoDeVelas, TIEMPO } from './luces.js';
 import { lluviaDePetalos } from './lluvia.js';
-import { pradoFloral } from './flores.js';
+import { pradoFloral, arregloFloral } from './flores.js';
 
 function generadorAleatorio(semilla) {
   let s = semilla >>> 0;
@@ -58,19 +59,38 @@ export async function crearCeremonia(escena, manager) {
   // Sillas: se rearman al cambiar la distribución (son pocas mallas instanciadas).
   let sillas = null;
   let invitados = null;
+  let bolas = null;
   let conInvitados = true;
-  function ponerSillas(distribucion) {
-    for (const g of [sillas, invitados]) {
+  let distribucionActual = 'curvas';
+  let modeloActual = 'crossback';
+  function ponerSillas(distribucion = distribucionActual, modelo = modeloActual) {
+    distribucionActual = distribucion;
+    modeloActual = modelo;
+    for (const g of [sillas, invitados, bolas]) {
       if (!g) continue;
       grupo.remove(g);
       g.traverse((o) => o.isInstancedMesh && o.dispose());
     }
-    sillas = crearSillas(madera, distribucion);
+    sillas = crearSillas(madera, distribucion, modelo);
+    // Bolas de flores junto a la primera silla de cada fila, del lado del pasillo.
+    const { arco: a } = CEREMONIA;
+    const internas = sillas.userData.posiciones.filter((p, i, lista) => {
+      const lado = Math.sign(p.x - a.x);
+      return !lista.some((q) => Math.abs(q.z - p.z) < 0.3 && Math.sign(q.x - a.x) === lado && Math.abs(q.x - a.x) < Math.abs(p.x - a.x) - 0.01);
+    });
+    bolas = bolasDeFlores(
+      internas.map((p) => new THREE.Vector3(a.x + Math.sign(p.x - a.x) * (Math.abs(p.x - a.x) - 0.32), 0.16, p.z + 0.1)),
+      rosaGeo,
+      generadorAleatorio(97),
+    );
+    bolas.visible = pasilloActual === 'alfombra';
+    grupo.add(bolas);
     // Misma semilla siempre: cada invitado conserva su ropa al cambiar la distribución.
     invitados = crearInvitados(sillas.userData.matrices, generadorAleatorio(71));
     invitados.visible = conInvitados;
     grupo.add(sillas, invitados);
   }
+  const ponerModeloSillas = (modelo) => ponerSillas(distribucionActual, modelo);
   function mostrarInvitados(si) {
     conInvitados = si;
     if (invitados) invitados.visible = si;
@@ -79,17 +99,20 @@ export async function crearCeremonia(escena, manager) {
   // Pasillo: camino de piedra con faroles, o pasto con flores y pétalos.
   const faroles = crearFaroles();
   const pasillos = {
+    alfombra: pasilloDeAlfombra(rosaGeo, generadorAleatorio(29)),
     piedra: new THREE.Group().add(crearPiedras(piedra, generadorAleatorio(17)), faroles.grupo),
     flores: pasilloDeFlores(rosaGeo, generadorAleatorio(23)),
   };
   for (const g of Object.values(pasillos)) grupo.add(g);
-  let pasilloActual = 'piedra';
+  let pasilloActual = 'alfombra';
   function ponerPasillo(tipo) {
     pasilloActual = tipo;
     for (const [k, g] of Object.entries(pasillos)) g.visible = k === tipo;
-    // Sobre el camino de piedra no crece hierba; en el de pasto, sí.
+    // Sobre el camino de piedra y la alfombra no crece hierba; en el de pasto, sí.
     if (tipo === 'piedra') ZONA_SIN_HIERBA.copy(rectanguloPasillo());
+    else if (tipo === 'alfombra') ZONA_SIN_HIERBA.copy(rectanguloPasillo(ANCHO_ALFOMBRA));
     else ZONA_SIN_HIERBA.set(0, 0, 0, 0);
+    if (bolas) bolas.visible = tipo === 'alfombra';
     aplicarLuz(ultimaLuz);
   }
 
@@ -99,6 +122,35 @@ export async function crearCeremonia(escena, manager) {
   const lugarArco = new THREE.Group();
   lugarArco.position.set(CEREMONIA.arco.x, 0, CEREMONIA.arco.z);
   grupo.add(lugarArco);
+
+  // Mesa del registro civil bajo el arco, detrás de los novios, con mantel blanco hasta el piso,
+  // un camino de flores encima y otro en el piso que llega hasta ella.
+  const mesa = new THREE.Group();
+  const mantel = new THREE.MeshStandardMaterial({ color: 0xf8f6f0, roughness: 0.9 });
+  const tablero = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.03, 0.75), mantel);
+  tablero.position.y = 0.76;
+  const falda = new THREE.Mesh(new THREE.BoxGeometry(1.52, 0.75, 0.77, 1, 1, 1), mantel);
+  falda.position.y = 0.375;
+  for (const m of [tablero, falda]) {
+    m.castShadow = m.receiveShadow = true;
+    mesa.add(m);
+  }
+  const aleatorioMesa = generadorAleatorio(37);
+  const sobreMesa = [];
+  const caminoPiso = [];
+  for (let x = -0.6; x <= 0.6; x += 0.1) {
+    sobreMesa.push({ p: new THREE.Vector3(x, 0.84 + aleatorioMesa() * 0.04, (aleatorioMesa() - 0.5) * 0.12), n: new THREE.Vector3((aleatorioMesa() - 0.5) * 0.6, 1, 0.5).normalize(), s: 0.75 + aleatorioMesa() * 0.3 });
+  }
+  for (let z = 0.45; z < 2.1; z += 0.1) {
+    for (let k = 0; k < 2; k++) {
+      caminoPiso.push({ p: new THREE.Vector3((aleatorioMesa() - 0.5) * 0.35, 0.07, z), n: new THREE.Vector3((aleatorioMesa() - 0.5) * 0.5, 1, 0.3).normalize(), s: 0.8 + aleatorioMesa() * 0.3 });
+    }
+  }
+  mesa.add(hortensias(sobreMesa, aleatorioMesa));
+  mesa.add(arregloFloral(sobreMesa.filter((_, i) => i % 2 === 0).map(({ p }) => ({ p, n: new THREE.Vector3(0, 0.7, 1).normalize() })), { rosaGeo, aleatorio: aleatorioMesa, radioFollaje: 0.16, densidad: 40, tamanoRosa: 0.07 }));
+  mesa.add(hortensias(caminoPiso, aleatorioMesa));
+  mesa.position.set(0, 0, 0.1);
+  lugarArco.add(mesa);
 
   // Extras del atardecer: cortina de luces detrás del altar y velas en vidrio.
   const aleatorioExtras = generadorAleatorio(91);
@@ -193,6 +245,7 @@ export async function crearCeremonia(escena, manager) {
     ponerArco,
     ponerPasillo,
     ponerSillas,
+    ponerModeloSillas,
     mostrarInvitados,
     ponerExtras,
     novios,
@@ -209,9 +262,9 @@ export async function crearCeremonia(escena, manager) {
   };
 }
 
-function rectanguloPasillo() {
+function rectanguloPasillo(ancho = CEREMONIA.pasillo.ancho) {
   const { arco, pasillo } = CEREMONIA;
-  return new THREE.Vector4(arco.x - pasillo.ancho / 2 - 0.05, pasillo.desdeZ - 0.05, arco.x + pasillo.ancho / 2 + 0.05, pasillo.hastaZ + 0.05);
+  return new THREE.Vector4(arco.x - ancho / 2 - 0.05, pasillo.desdeZ - 0.05, arco.x + ancho / 2 + 0.05, pasillo.hastaZ + 0.05);
 }
 
 // Zona sin hierba instanciada, en coordenadas del mundo (x0, z0, x1, z1). La hierba lee este

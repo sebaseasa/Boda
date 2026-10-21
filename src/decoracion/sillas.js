@@ -39,6 +39,31 @@ function geometriaSilla() {
   return mergeGeometries(partes);
 }
 
+// Silla plegable blanca de jardín (la de la referencia de Caro): asiento y respaldo de tablillas.
+function geometriaPlegable() {
+  const v = (x, y, z) => new THREE.Vector3(x, y, z);
+  const L = 0.03;
+  const partes = [
+    pieza(v(-0.19, 0, -0.2), v(-0.19, 0.45, -0.17), L, L),
+    pieza(v(0.19, 0, -0.2), v(0.19, 0.45, -0.17), L, L),
+    pieza(v(-0.19, 0, 0.21), v(-0.185, 0.86, 0.2), L, L),
+    pieza(v(0.19, 0, 0.21), v(0.185, 0.86, 0.2), L, L),
+    // Tablillas del asiento.
+    ...[-0.13, -0.045, 0.04, 0.125].map((z) => pieza(v(-0.2, 0.455, z), v(0.2, 0.455, z), 0.075, 0.022)),
+    // Respaldo: dos tablas anchas.
+    pieza(v(-0.19, 0.8, 0.2), v(0.19, 0.8, 0.2), 0.08, 0.02),
+    pieza(v(-0.19, 0.66, 0.2), v(0.19, 0.66, 0.2), 0.05, 0.02),
+    // Travesaños.
+    pieza(v(-0.19, 0.12, -0.19), v(0.19, 0.12, -0.19), 0.022, 0.022),
+    pieza(v(-0.19, 0.12, 0.21), v(0.19, 0.12, 0.21), 0.022, 0.022),
+    pieza(v(-0.19, 0.2, -0.19), v(-0.19, 0.2, 0.21), 0.022, 0.022),
+    pieza(v(0.19, 0.2, -0.19), v(0.19, 0.2, 0.21), 0.022, 0.022),
+  ].map((g) => g.toNonIndexed());
+  return mergeGeometries(partes);
+}
+
+const resinaBlanca = new THREE.MeshStandardMaterial({ color: 0xf4f3ee, roughness: 0.45 });
+
 function geometriaCojin() {
   const g = new THREE.BoxGeometry(0.4, 0.045, 0.38, 6, 2, 6);
   const p = g.attributes.position;
@@ -90,7 +115,7 @@ export function posicionesSillas(distribucion = 'rectas') {
   return lista;
 }
 
-export function crearSillas(madera, distribucion) {
+export function crearSillas(madera, distribucion, modelo = 'crossback') {
   const posiciones = posicionesSillas(distribucion);
   const cojin = new THREE.MeshStandardMaterial({ color: 0xeee6d6, roughness: 0.92 });
   const grupo = new THREE.Group();
@@ -99,7 +124,8 @@ export function crearSillas(madera, distribucion) {
     const giro = (Math.sin(i * 12.9898) * 43758.5453) % 1;
     return new THREE.Matrix4().makeRotationY(p.giro + giro * 0.06).setPosition(p.x + giro * 0.02, 0, p.z - giro * 0.03);
   });
-  for (const [geo, material] of [[geometriaSilla(), madera], [geometriaCojin(), cojin]]) {
+  const piezas = modelo === 'plegable' ? [[geometriaPlegable(), resinaBlanca]] : [[geometriaSilla(), madera], [geometriaCojin(), cojin]];
+  for (const [geo, material] of piezas) {
     const malla = new THREE.InstancedMesh(geo, material, posiciones.length);
     matrices.forEach((m, i) => malla.setMatrixAt(i, m));
     malla.castShadow = malla.receiveShadow = true;
@@ -107,5 +133,6 @@ export function crearSillas(madera, distribucion) {
   }
   // Los invitados se sientan con estas mismas posiciones.
   grupo.userData.matrices = matrices;
+  grupo.userData.posiciones = posiciones;
   return grupo;
 }
