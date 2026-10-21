@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CEREMONIA } from '../config.js';
+import { arregloFloral, crearPetalos } from './flores.js';
 
 // Camino de piedra del pasillo y faroles con vela a los lados.
 
@@ -109,4 +110,36 @@ export function crearFaroles() {
   const { arco, pasillo } = CEREMONIA;
   const luces = [0.15, 0.5, 0.85].map((t) => new THREE.Vector3(arco.x, 0.35, THREE.MathUtils.lerp(pasillo.desdeZ, pasillo.hastaZ, t)));
   return farolesEn(posicionesFaroles(), luces);
+}
+
+// Pasillo de pasto bordeado por filas bajas de flores blancas y pétalos regados, como en las
+// referencias de Caro. Las flores se juntan más en la entrada y junto al altar.
+export function pasilloDeFlores(rosaGeo, aleatorio) {
+  const { arco, pasillo } = CEREMONIA;
+  const grupo = new THREE.Group();
+  for (const lado of [-1, 1]) {
+    const puntos = [];
+    for (let z = pasillo.desdeZ + 0.6; z < pasillo.hastaZ; z += 0.32) {
+      const t = (z - pasillo.desdeZ) / (pasillo.hastaZ - pasillo.desdeZ);
+      // Más alto y frondoso en los extremos del pasillo.
+      const extremo = Math.max(1 - t / 0.18, (t - 0.82) / 0.18, 0);
+      const alto = 0.12 + aleatorio() * 0.18 + extremo * 0.45;
+      const x = arco.x + lado * (pasillo.ancho / 2 + 0.12 + aleatorio() * 0.1 + extremo * 0.2);
+      puntos.push({ p: new THREE.Vector3(x, alto, z), n: new THREE.Vector3(-lado * 0.6, 1, 0.2).normalize() });
+      if (extremo > 0.3) puntos.push({ p: new THREE.Vector3(x + lado * 0.35, alto * 0.7, z + 0.1), n: new THREE.Vector3(lado * 0.3, 1, 0.3).normalize() });
+    }
+    grupo.add(arregloFloral(puntos, { rosaGeo, aleatorio, rosas: 0.55, radioFollaje: 0.24, densidad: 30 }));
+  }
+  grupo.add(
+    crearPetalos(
+      [
+        // Ralos en el centro del pasillo, más tupidos junto a las flores.
+        { x0: arco.x - pasillo.ancho / 2, x1: arco.x + pasillo.ancho / 2, z0: pasillo.desdeZ, z1: pasillo.hastaZ, cantidad: 500 },
+        { x0: arco.x - pasillo.ancho / 2, x1: arco.x - pasillo.ancho / 2 + 0.3, z0: pasillo.desdeZ, z1: pasillo.hastaZ, cantidad: 450 },
+        { x0: arco.x + pasillo.ancho / 2 - 0.3, x1: arco.x + pasillo.ancho / 2, z0: pasillo.desdeZ, z1: pasillo.hastaZ, cantidad: 450 },
+      ],
+      aleatorio,
+    ),
+  );
+  return grupo;
 }

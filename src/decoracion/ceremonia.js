@@ -4,7 +4,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { CEREMONIA } from '../config.js';
 import { CONSTRUCTORES } from './arcos.js';
 import { crearSillas } from './sillas.js';
-import { crearPiedras, crearFaroles } from './pasillo.js';
+import { crearPiedras, crearFaroles, pasilloDeFlores } from './pasillo.js';
 import { crearNovios } from './novios.js';
 
 function generadorAleatorio(semilla) {
@@ -49,11 +49,35 @@ export async function crearCeremonia(escena, manager) {
   const piedra = materialPBR(texturas, 'piedra', { color: 0xa39b8e });
 
   const grupo = new THREE.Group();
-  grupo.add(crearSillas(madera));
-  grupo.add(crearPiedras(piedra, generadorAleatorio(17)));
-  const faroles = crearFaroles();
-  grupo.add(faroles.grupo);
   escena.add(grupo);
+
+  // Sillas: se rearman al cambiar la distribución (son pocas mallas instanciadas).
+  let sillas = null;
+  function ponerSillas(distribucion) {
+    if (sillas) {
+      grupo.remove(sillas);
+      sillas.traverse((o) => o.isInstancedMesh && o.dispose());
+    }
+    sillas = crearSillas(madera, distribucion);
+    grupo.add(sillas);
+  }
+
+  // Pasillo: camino de piedra con faroles, o pasto con flores y pétalos.
+  const faroles = crearFaroles();
+  const pasillos = {
+    piedra: new THREE.Group().add(crearPiedras(piedra, generadorAleatorio(17)), faroles.grupo),
+    flores: pasilloDeFlores(rosaGeo, generadorAleatorio(23)),
+  };
+  for (const g of Object.values(pasillos)) grupo.add(g);
+  let pasilloActual = 'piedra';
+  function ponerPasillo(tipo) {
+    pasilloActual = tipo;
+    for (const [k, g] of Object.entries(pasillos)) g.visible = k === tipo;
+    // Sobre el camino de piedra no crece hierba; en el de pasto, sí.
+    if (tipo === 'piedra') ZONA_SIN_HIERBA.copy(rectanguloPasillo());
+    else ZONA_SIN_HIERBA.set(0, 0, 0, 0);
+    aplicarLuz(ultimaLuz);
+  }
 
   const novios = crearNovios(rosaGeo, generadorAleatorio(53));
   grupo.add(novios.grupo);
@@ -78,19 +102,24 @@ export async function crearCeremonia(escena, manager) {
     ultimaLuz = luz;
     // Los faroles se notan al caer la tarde.
     const noche = 1 - THREE.MathUtils.smoothstep(luz, 0.05, 0.6);
-    for (const l of faroles.luces) l.intensity = 1.6 * noche;
+    for (const l of faroles.luces) l.intensity = pasilloActual === 'piedra' ? 1.6 * noche : 0;
     for (const l of actual?.userData.luces ?? []) l.intensity = 2.5 * noche;
   }
 
   return {
     ponerArco,
+    ponerPasillo,
+    ponerSillas,
     novios,
     aplicarLuz,
   };
 }
 
-// Zona sin hierba instanciada (el camino de piedra), en coordenadas del mundo: x0, z0, x1, z1.
-export function zonaSinHierba() {
+function rectanguloPasillo() {
   const { arco, pasillo } = CEREMONIA;
   return new THREE.Vector4(arco.x - pasillo.ancho / 2 - 0.05, pasillo.desdeZ - 0.05, arco.x + pasillo.ancho / 2 + 0.05, pasillo.hastaZ + 0.05);
 }
+
+// Zona sin hierba instanciada, en coordenadas del mundo (x0, z0, x1, z1). La hierba lee este
+// mismo objeto, así que basta con cambiarlo al elegir el tipo de pasillo.
+export const ZONA_SIN_HIERBA = rectanguloPasillo();

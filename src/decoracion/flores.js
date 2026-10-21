@@ -131,3 +131,43 @@ export function puntosEnCurva(curva, separacion, { haciaAfuera = 0.6, centro = n
   }
   return puntos;
 }
+
+// Pétalos sueltos sobre el pasto: tarjetas pequeñas, curvadas y casi planas.
+const materialPetalo = new THREE.MeshStandardMaterial({ color: 0xf8f3ea, roughness: 0.7, side: THREE.DoubleSide });
+function geometriaPetalo() {
+  const g = new THREE.PlaneGeometry(1, 1, 2, 2);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i);
+    const y = p.getY(i);
+    // Óvalo con las puntas hacia arriba, como un pétalo de rosa caído.
+    p.setX(i, x * (1 - Math.abs(y) * 0.6));
+    p.setZ(i, (x * x + y * y) * 0.35);
+  }
+  g.rotateX(-Math.PI / 2);
+  g.computeVertexNormals();
+  return g;
+}
+
+// zonas: [{ x0, z0, x1, z1, cantidad }] en las coordenadas del grupo donde se agrega la malla.
+export function crearPetalos(zonas, aleatorio) {
+  const total = zonas.reduce((t, z) => t + z.cantidad, 0);
+  const malla = new THREE.InstancedMesh(geometriaPetalo(), materialPetalo, total);
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const e = new THREE.Euler();
+  const pos = new THREE.Vector3();
+  const esc = new THREE.Vector3();
+  let k = 0;
+  for (const z of zonas) {
+    for (let i = 0; i < z.cantidad; i++) {
+      pos.set(THREE.MathUtils.lerp(z.x0, z.x1, aleatorio()), 0.012 + aleatorio() * 0.01, THREE.MathUtils.lerp(z.z0, z.z1, aleatorio()));
+      e.set((aleatorio() - 0.5) * 0.5, aleatorio() * Math.PI * 2, (aleatorio() - 0.5) * 0.5);
+      const t = 0.035 + aleatorio() * 0.02;
+      m.compose(pos, q.setFromEuler(e), esc.set(t, t, t * 1.3));
+      malla.setMatrixAt(k++, m);
+    }
+  }
+  malla.receiveShadow = true;
+  return malla;
+}
