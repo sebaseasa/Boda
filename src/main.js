@@ -115,7 +115,9 @@ deslizador.addEventListener('input', () => aplicarHora(leerHora()));
 const contArcos = $('#arcos');
 let arcoActual = POR_DEFECTO.arco;
 try {
-  arcoActual = localStorage.getItem('arco') || arcoActual;
+  const guardado = localStorage.getItem('arco');
+  // Solo si sigue existiendo esa opción (antes había arcos armados que ya no están).
+  if (ARCOS.some(([id]) => id === guardado)) arcoActual = guardado;
 } catch {}
 contArcos.innerHTML = ARCOS.map(([id, nombre]) => `<button data-arco="${id}">${nombre}</button>`).join('');
 function ponerArco(id) {

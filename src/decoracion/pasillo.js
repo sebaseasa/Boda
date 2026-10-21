@@ -74,19 +74,20 @@ export function posicionesFaroles() {
   return lista;
 }
 
-export function crearFaroles() {
-  const posiciones = posicionesFaroles();
-  const grupo = new THREE.Group();
-  const marco = new THREE.MeshStandardMaterial({ color: 0x1d1b18, metalness: 0.7, roughness: 0.45 });
-  const vidrio = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.05, metalness: 0, transparent: true, opacity: 0.18, depthWrite: false });
-  const vela = new THREE.MeshStandardMaterial({ color: 0xf3ead6, roughness: 0.6, emissive: 0xffb060, emissiveIntensity: 0.15 });
-  const llama = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffb35a).multiplyScalar(6), toneMapped: true });
+const marcoFarol = new THREE.MeshStandardMaterial({ color: 0x1d1b18, metalness: 0.7, roughness: 0.45 });
+const vidrioFarol = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.05, metalness: 0, transparent: true, opacity: 0.18, depthWrite: false });
+const velaFarol = new THREE.MeshStandardMaterial({ color: 0xf3ead6, roughness: 0.6, emissive: 0xffb060, emissiveIntensity: 0.15 });
+const llamaFarol = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffb35a).multiplyScalar(6) });
 
+// Faroles con vela en las posiciones dadas, más unas pocas luces reales (cada una cuesta en el
+// celular) en los puntos indicados. Las luces arrancan apagadas: se encienden al caer la tarde.
+export function farolesEn(posiciones, puntosLuz) {
+  const grupo = new THREE.Group();
   const piezas = [
-    [geometriaFarol(), marco, true],
-    [new THREE.BoxGeometry(0.17, 0.3, 0.17).translate(0, 0.18, 0), vidrio, false],
-    [new THREE.CylinderGeometry(0.03, 0.03, 0.11, 12).translate(0, 0.085, 0), vela, true],
-    [new THREE.SphereGeometry(0.012, 8, 6).scale(1, 2.2, 1).translate(0, 0.165, 0), llama, false],
+    [geometriaFarol(), marcoFarol, true],
+    [new THREE.BoxGeometry(0.17, 0.3, 0.17).translate(0, 0.18, 0), vidrioFarol, false],
+    [new THREE.CylinderGeometry(0.03, 0.03, 0.11, 12).translate(0, 0.085, 0), velaFarol, true],
+    [new THREE.SphereGeometry(0.012, 8, 6).scale(1, 2.2, 1).translate(0, 0.165, 0), llamaFarol, false],
   ];
   const m = new THREE.Matrix4();
   for (const [geo, material, sombra] of piezas) {
@@ -95,15 +96,17 @@ export function crearFaroles() {
     malla.castShadow = sombra;
     grupo.add(malla);
   }
-
-  // Pocas luces reales (cada una cuesta en el celular); repartidas a lo largo del pasillo.
-  const luces = [];
-  const { arco, pasillo } = CEREMONIA;
-  for (const t of [0.15, 0.5, 0.85]) {
+  const luces = puntosLuz.map((p) => {
     const luz = new THREE.PointLight(0xffb068, 0, 5, 2);
-    luz.position.set(arco.x, 0.35, THREE.MathUtils.lerp(pasillo.desdeZ, pasillo.hastaZ, t));
-    luces.push(luz);
+    luz.position.copy(p);
     grupo.add(luz);
-  }
+    return luz;
+  });
   return { grupo, luces };
+}
+
+export function crearFaroles() {
+  const { arco, pasillo } = CEREMONIA;
+  const luces = [0.15, 0.5, 0.85].map((t) => new THREE.Vector3(arco.x, 0.35, THREE.MathUtils.lerp(pasillo.desdeZ, pasillo.hastaZ, t)));
+  return farolesEn(posicionesFaroles(), luces);
 }

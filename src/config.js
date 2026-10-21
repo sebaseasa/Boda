@@ -22,9 +22,10 @@ export const DISTRIBUCION = {
   altarZ: -14,
 };
 
-// Ceremonia: el arco va entre el jacarandá y la palmera y los invitados lo miran (hacia -Z).
+// Ceremonia: el "arco" son los propios árboles. El altar queda entre el tronco del jacarandá y el
+// de la palmera, y los invitados lo miran (hacia -Z). "arco" es el centro de ese espacio.
 export const CEREMONIA = {
-  arco: { x: 0.75, z: -18.6 },
+  arco: { x: 0.75, z: -18.9 },
   invitados: 50,
   sillasPorLado: 5, // por fila, a cada lado del pasillo
   primeraFilaZ: -14.3,
@@ -33,17 +34,17 @@ export const CEREMONIA = {
   pasillo: { ancho: 1.5, desdeZ: -15.8, hastaZ: -2.5 },
 };
 
+// Formas de decorar los árboles que hacen de arco.
 export const ARCOS = [
-  ['jardin', 'Arco de jardín'],
-  ['circular', 'Circular'],
-  ['hexagonal', 'Hexagonal'],
-  ['madera', 'Madera con telas'],
-  ['columnas', 'Columnas de flores'],
+  ['base', 'Flores en la base'],
+  ['guirnalda', 'Guirnalda de flores'],
+  ['telas', 'Telas y flores'],
+  ['faroles', 'Faroles colgantes'],
 ];
 
 export const POR_DEFECTO = {
   hora: 17.83, // 5:50 pm, beso de casados al atardecer
-  arco: 'jardin',
+  arco: 'guirnalda',
 };
 
 export const HORA_MIN = 12; // la boda empieza al mediodía

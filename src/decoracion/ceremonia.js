@@ -64,20 +64,28 @@ export async function crearCeremonia(escena, manager) {
   const arcos = {};
   function ponerArco(tipo) {
     if (!arcos[tipo]) {
-      arcos[tipo] = CONSTRUCTORES[tipo]({ rosaGeo, aleatorio: generadorAleatorio(31) }, madera);
+      arcos[tipo] = CONSTRUCTORES[tipo]({ rosaGeo, aleatorio: generadorAleatorio(31) });
       lugarArco.add(arcos[tipo]);
     }
     for (const [k, g] of Object.entries(arcos)) g.visible = k === tipo;
+    actual = arcos[tipo];
+    aplicarLuz(ultimaLuz);
+  }
+
+  let actual = null;
+  let ultimaLuz = 1;
+  function aplicarLuz(luz) {
+    ultimaLuz = luz;
+    // Los faroles se notan al caer la tarde.
+    const noche = 1 - THREE.MathUtils.smoothstep(luz, 0.05, 0.6);
+    for (const l of faroles.luces) l.intensity = 1.6 * noche;
+    for (const l of actual?.userData.luces ?? []) l.intensity = 2.5 * noche;
   }
 
   return {
     ponerArco,
     novios,
-    aplicarLuz(luz) {
-      // Los faroles se notan al caer la tarde.
-      const noche = 1 - THREE.MathUtils.smoothstep(luz, 0.05, 0.6);
-      for (const l of faroles.luces) l.intensity = 1.6 * noche;
-    },
+    aplicarLuz,
   };
 }
 
