@@ -72,7 +72,7 @@ const _arriba = new THREE.Vector3(0, 1, 0);
 
 // Arreglo floral sobre una lista de puntos { p, n } (posición y hacia dónde mira la flor):
 // follaje de rusco, rosas blancas y gypsophila alrededor.
-export function arregloFloral(puntos, { rosaGeo, aleatorio, rosas = 1, radioFollaje = 0.3, densidad = 40 }) {
+export function arregloFloral(puntos, { rosaGeo, aleatorio, rosas = 1, radioFollaje = 0.3, densidad = 40, tamanoRosa = 0.09 }) {
   const grupo = new THREE.Group();
 
   const volumenes = puntos.map(({ p }) => ({
@@ -92,7 +92,7 @@ export function arregloFloral(puntos, { rosaGeo, aleatorio, rosas = 1, radioFoll
       _q.setFromUnitVectors(_arriba, dir);
       _q2.setFromAxisAngle(dir, aleatorio() * Math.PI * 2);
       _q.premultiply(_q2);
-      const d = 0.09 + aleatorio() * 0.05;
+      const d = tamanoRosa * (1 + aleatorio() * 0.55);
       const pos = p.clone().addScaledVector(dir, radioFollaje * 0.55).add(new THREE.Vector3(aleatorio() - 0.5, aleatorio() - 0.5, aleatorio() - 0.5).multiplyScalar(radioFollaje * 0.8));
       _m.compose(pos, _q, _s.setScalar(d));
       rosasMalla.setMatrixAt(k++, _m);

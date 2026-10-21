@@ -133,7 +133,7 @@ ponerArco(arcoActual);
 const { arco } = CEREMONIA;
 const VISTAS = {
   invitados: { nombre: 'Desde los invitados', p: [arco.x + 0.4, 1.5, -8.4], t: [arco.x, 1.4, arco.z] },
-  pasillo: { nombre: 'Entrada de la novia', p: [arco.x, 1.6, -1.5], t: [arco.x, 1.4, arco.z] },
+  pasillo: { nombre: '▶ Entrada de la novia', p: [arco.x - 1.7, 1.6, arco.z + 2.8], t: [arco.x + 0.2, 1.1, -5] },
   altar: { nombre: 'Desde el altar', p: [arco.x + 0.3, 1.7, arco.z + 2.2], t: [arco.x, 1.1, -8] },
   general: { nombre: 'General', p: [13, 7, -4], t: [arco.x, 1.2, -14] },
   jardin: { nombre: 'Como en las fotos', p: [2.5, 1.7, -1], t: [0.5, 3.2, -19] },
@@ -157,7 +157,9 @@ function irAVista(id) {
 }
 contVistas.addEventListener('click', (e) => {
   const b = e.target.closest('button[data-vista]');
-  if (b) irAVista(b.dataset.vista);
+  if (!b) return;
+  irAVista(b.dataset.vista);
+  if (b.dataset.vista === 'pasillo') ceremonia?.novios.entrar();
 });
 controles.addEventListener('start', () => {
   transicion = null;
@@ -194,6 +196,7 @@ let hojas = 0;
 function cuadro(ahora) {
   reloj.update(ahora);
   avanzarTransicion(ahora);
+  ceremonia?.novios.actualizar(ahora);
   controles.update();
   hojas = hierba.actualizar(reloj.getElapsed(), camara, calidad.actual.hierba);
   composer.render(reloj.getDelta());

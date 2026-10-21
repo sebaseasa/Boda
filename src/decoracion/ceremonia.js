@@ -5,6 +5,7 @@ import { CEREMONIA } from '../config.js';
 import { CONSTRUCTORES } from './arcos.js';
 import { crearSillas } from './sillas.js';
 import { crearPiedras, crearFaroles } from './pasillo.js';
+import { crearNovios } from './novios.js';
 
 function generadorAleatorio(semilla) {
   let s = semilla >>> 0;
@@ -54,6 +55,9 @@ export async function crearCeremonia(escena, manager) {
   grupo.add(faroles.grupo);
   escena.add(grupo);
 
+  const novios = crearNovios(rosaGeo, generadorAleatorio(53));
+  grupo.add(novios.grupo);
+
   const lugarArco = new THREE.Group();
   lugarArco.position.set(CEREMONIA.arco.x, 0, CEREMONIA.arco.z);
   grupo.add(lugarArco);
@@ -68,6 +72,7 @@ export async function crearCeremonia(escena, manager) {
 
   return {
     ponerArco,
+    novios,
     aplicarLuz(luz) {
       // Los faroles se notan al caer la tarde.
       const noche = 1 - THREE.MathUtils.smoothstep(luz, 0.05, 0.6);
