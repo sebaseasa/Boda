@@ -59,7 +59,7 @@ export const INVITADOS = [
 ];
 
 export const POR_DEFECTO = {
-  hora: 17.83, // 5:50 pm, beso de casados al atardecer
+  hora: 12.5, // 12:30 pm, en plena ceremonia (12:00 a 1:30 pm)
   arco: 'telas',
   pasillo: 'flores',
   sillas: 'curvas',

@@ -171,3 +171,106 @@ export function crearPetalos(zonas, aleatorio) {
   malla.receiveShadow = true;
   return malla;
 }
+
+// Alhelí blanco (como en los centros de mesa de la prueba): espigas altas con florcitas apiñadas.
+// espigas: [{ p: base, alto }]
+const materialTallo = new THREE.MeshStandardMaterial({ color: 0x5d7a45, roughness: 0.8 });
+const materialAlheli = new THREE.MeshStandardMaterial({ color: 0xfaf7f0, roughness: 0.75 });
+export function espigasDeAlheli(espigas, aleatorio) {
+  const grupo = new THREE.Group();
+  const tallos = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.004, 0.006, 1, 5).translate(0, 0.5, 0), materialTallo, espigas.length);
+  const porEspiga = 22;
+  const florcitas = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), materialAlheli, espigas.length * porEspiga);
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const s = new THREE.Vector3();
+  const p = new THREE.Vector3();
+  let k = 0;
+  espigas.forEach(({ p: base, alto }, i) => {
+    // Un poco inclinada, nunca perfectamente vertical.
+    const inclinacion = new THREE.Euler((aleatorio() - 0.5) * 0.35, 0, (aleatorio() - 0.5) * 0.35);
+    q.setFromEuler(inclinacion);
+    tallos.setMatrixAt(i, m.compose(base, q, s.set(1, alto, 1)));
+    const eje = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+    for (let j = 0; j < porEspiga; j++) {
+      const t = 0.62 + (j / porEspiga) * 0.38;
+      const a = j * 2.4;
+      const r = 0.022 * (1 - t * 0.6);
+      p.copy(base).addScaledVector(eje, alto * t).add(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r));
+      florcitas.setMatrixAt(k++, m.compose(p, q.identity(), s.setScalar(0.011 + aleatorio() * 0.006 - t * 0.004)));
+      q.setFromEuler(inclinacion);
+    }
+  });
+  tallos.castShadow = florcitas.castShadow = true;
+  grupo.add(tallos, florcitas);
+  return grupo;
+}
+
+// Prado de flores que brota del pasto: rosas, rusco y gypsophila bajos y anchos, con espigas de
+// alhelí más altas por encima. lado: hacia dónde se abre más (1 o -1 en X, 0 = parejo).
+export function pradoFloral(centro, { radio = 0.9, cantidad = 34, alto = 0.6, espigas = 14, rosaGeo, aleatorio }) {
+  const grupo = new THREE.Group();
+  const puntos = [];
+  for (let i = 0; i < cantidad; i++) {
+    const a = aleatorio() * Math.PI * 2;
+    const d = Math.sqrt(aleatorio());
+    const h = alto * (1 - d * 0.75) * (0.6 + aleatorio() * 0.4);
+    const n = new THREE.Vector3(Math.cos(a) * d, 0.8, Math.sin(a) * d + 0.3).normalize();
+    puntos.push({ p: new THREE.Vector3(centro.x + Math.cos(a) * d * radio, 0.08 + h, centro.z + Math.sin(a) * d * radio * 0.7), n });
+  }
+  grupo.add(arregloFloral(puntos, { rosaGeo, aleatorio, rosas: 0.8, radioFollaje: 0.26, densidad: 34 }));
+  const lista = Array.from({ length: espigas }, () => {
+    const a = aleatorio() * Math.PI * 2;
+    const d = Math.sqrt(aleatorio()) * radio * 0.7;
+    return { p: new THREE.Vector3(centro.x + Math.cos(a) * d, 0, centro.z + Math.sin(a) * d * 0.7), alto: alto + 0.3 + aleatorio() * 0.45 };
+  });
+  grupo.add(espigasDeAlheli(lista, aleatorio));
+  return grupo;
+}
+
+// Nube de flores colgante: un volumen orgánico de rosas, rusco y gypsophila suspendido bajo las
+// copas, con hilos de flores que cuelgan por debajo y cables finos hacia las ramas.
+export function nubeDeFlores(centro, { ancho = 2.6, alto = 0.55, fondo = 0.9, hastaRama = 1.6, rosaGeo, aleatorio }) {
+  const grupo = new THREE.Group();
+  const puntos = [];
+  for (let i = 0; i < 70; i++) {
+    // Más flores en la parte de abajo, que es la que se ve desde el suelo.
+    const n = new THREE.Vector3(aleatorio() * 2 - 1, -Math.pow(aleatorio(), 0.6), aleatorio() * 2 - 1).normalize();
+    const forma = 1 + 0.25 * Math.sin(n.x * 5 + n.z * 3);
+    puntos.push({
+      p: new THREE.Vector3(centro.x + n.x * ancho * 0.5 * forma, centro.y + n.y * alto * 0.5, centro.z + n.z * fondo * 0.5),
+      n,
+    });
+  }
+  // Algunas flores arriba para que no se vea hueca de lado.
+  for (let i = 0; i < 14; i++) {
+    const n = new THREE.Vector3(aleatorio() * 2 - 1, aleatorio() * 0.5, aleatorio() * 2 - 1).normalize();
+    puntos.push({ p: new THREE.Vector3(centro.x + n.x * ancho * 0.42, centro.y + n.y * alto * 0.4, centro.z + n.z * fondo * 0.4), n });
+  }
+  grupo.add(arregloFloral(puntos, { rosaGeo, aleatorio, rosas: 0.85, radioFollaje: 0.27, densidad: 34 }));
+  // Hilos colgantes de follaje y flores.
+  const colgantes = [];
+  for (let h = 0; h < 16; h++) {
+    const x = centro.x + (aleatorio() - 0.5) * ancho * 0.9;
+    const z = centro.z + (aleatorio() - 0.5) * fondo * 0.7;
+    const largo = 0.3 + aleatorio() * 0.65;
+    for (let t = 0; t < largo; t += 0.12) {
+      colgantes.push({ p: new THREE.Vector3(x + Math.sin(t * 6) * 0.03, centro.y - alto * 0.4 - t, z), n: new THREE.Vector3(0, -0.4, 1).normalize() });
+    }
+  }
+  grupo.add(arregloFloral(colgantes, { rosaGeo, aleatorio, rosas: 0.35, radioFollaje: 0.1, densidad: 70, tamanoRosa: 0.06 }));
+  // Cables a las ramas.
+  const cables = [];
+  for (const [dx, dz] of [[-0.42, 0], [0.42, 0], [0, -0.3], [0, 0.3]]) {
+    const x = centro.x + dx * ancho;
+    const z = centro.z + dz * fondo;
+    cables.push(x, centro.y + alto * 0.3, z, x * 0.95, centro.y + hastaRama, z);
+  }
+  grupo.add(
+    new THREE.LineSegments(
+      new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(cables, 3)),
+      new THREE.LineBasicMaterial({ color: 0x3a3a34, transparent: true, opacity: 0.5 }),
+    ),
+  );
+  return grupo;
+}

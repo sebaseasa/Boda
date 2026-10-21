@@ -42,17 +42,15 @@ Lo trabajo desde el celular (Samsung Galaxy Z Fold 5) y se publica en GitHub Pag
 - Extras: letrero "Bienvenidos a nuestro comienzo", lounge con fogata y sillones de ratán, faroles colgando del árbol grande, luces colgantes.
 
 ## Itinerario (modo "La experiencia")
-La boda empieza a las **12:00** (corrección de Sebas); falta definir qué pasa entre las 12:00 y las 3:00 pm.
+La boda empieza a las **12:00** y la **ceremonia es a las 12:00, dura alrededor de 1 h 30** (correcciones de Sebas). Los detalles "wow" deben lucir de día, al mediodía.
 
 | Hora | Momento | Vista |
 |---|---|---|
-| 3:00 pm | Bienvenida | Letrero y lounge |
-| 4:00 pm | Ceremonia civil | Mesa del registro junto al altar |
-| 4:30 pm | Ceremonia espiritual | Entrada de la novia por el pasillo |
-| 5:50 pm | Beso de casados al atardecer | Altar con el sol bajando |
-| 6:00 pm | Fotos | Bajo el árbol grande |
-| 7:00 pm | Cena de 3 tiempos | Detalle de mesa |
-| 8:00 pm | Brindis y despedida | Lounge con fogata |
+| 12:00 pm | Ceremonia: entrada de la novia | Pasillo |
+| 1:20 pm | Beso de casados (pétalos de los invitados) | Altar |
+| 1:30 pm | Fin de la ceremonia | |
+
+Por confirmar (venían del itinerario anterior, que ponía la ceremonia en la tarde): ceremonia civil (mesa del registro junto al altar), fotos bajo el árbol grande, cena de 3 tiempos, brindis y despedida en el lounge con fogata.
 
 ## Funciones que deben existir (vienen del prototipo)
 El prototipo está en `referencia/simulador-boda.html`; úsalo como especificación de funciones, no de estilo visual.
