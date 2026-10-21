@@ -1,38 +1,13 @@
 import * as THREE from 'three';
 import { CEREMONIA, DISTRIBUCION } from '../config.js';
-import { arregloFloral, crearPetalos, pradoFloral, puntosEnCurva } from './flores.js';
-import { TIEMPO } from './luces.js';
+import { arregloFloral, espigasDeAlheli, puntosEnCurva } from './flores.js';
+import { hortensias } from './hortensias.js';
 import { farolesEn } from './pasillo.js';
 
 // El arco del altar son los propios árboles: el tronco del jacarandá a un lado, el de la palmera
 // al otro y las copas que se juntan arriba. Aquí están las formas de decorarlos, en coordenadas
 // relativas al centro del altar (CEREMONIA.arco), con los invitados hacia +Z.
-// crearPetalos recibe zonas en las coordenadas del grupo donde se agrega.
 
-const chifon = new THREE.MeshPhysicalMaterial({
-  color: 0xf4eee2,
-  roughness: 0.7,
-  sheen: 1,
-  sheenColor: new THREE.Color(0xffffff),
-  sheenRoughness: 0.5,
-  transparent: true,
-  opacity: 0.82,
-  side: THREE.DoubleSide,
-  depthWrite: false,
-});
-// Viento: la tela ondea suave, más en el medio de su altura (arriba está amarrada y abajo apoyada).
-chifon.onBeforeCompile = (shader) => {
-  shader.uniforms.uTiempo = TIEMPO;
-  shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nuniform float uTiempo;').replace(
-    '#include <begin_vertex>',
-    `#include <begin_vertex>
-    vec4 mundoTela = modelMatrix * vec4(transformed, 1.0);
-    float sujeta = sin(3.14159 * clamp(mundoTela.y / 4.8, 0.0, 1.0));
-    float rafaga = 0.6 + 0.4 * sin(uTiempo * 0.35 + mundoTela.x * 0.2);
-    transformed.z += sujeta * rafaga * (0.07 * sin(uTiempo * 1.1 + mundoTela.x * 2.1 + mundoTela.y * 1.3)
-      + 0.03 * sin(uTiempo * 2.4 + mundoTela.y * 3.7));`,
-  );
-};
 const cuerda = new THREE.MeshStandardMaterial({ color: 0x3a2c20, roughness: 1 });
 
 function troncos() {
@@ -87,83 +62,88 @@ function guirnalda(r) {
   return g;
 }
 
-// Caída de chifón desde una rama hasta el suelo, como en las referencias de Caro: recogida arriba,
-// abierta abajo, con pliegues y la cola arrastrándose en el pasto hacia los invitados.
-function caida(desde, ancho, cola, fase) {
-  const alto = desde.y;
-  const largo = alto + cola;
-  const geo = new THREE.PlaneGeometry(ancho, largo, 18, 40);
-  const pos = geo.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    const u = pos.getX(i) / ancho; // -0.5 a 0.5
-    const s = largo / 2 - pos.getY(i); // recorrido desde arriba
-    const t = THREE.MathUtils.clamp(s / alto, 0, 1);
-    const abierto = 0.22 + 0.78 * Math.pow(t, 0.7);
-    const pliegue = Math.sin(u * Math.PI * 7 + fase) * 0.06 * (0.2 + t);
-    let y = alto - s;
-    let z = pliegue;
-    let x = u * ancho * abierto;
-    if (s > alto) {
-      // Cola sobre el pasto.
-      const c = s - alto;
-      y = 0.015 + Math.abs(pliegue) * 0.3;
-      z = c * 0.9 + pliegue * 0.5;
-      x *= 1 + c * 0.5;
-    }
-    pos.setXYZ(i, x, y, z);
-  }
-  geo.computeVertexNormals();
-  const m = new THREE.Mesh(geo, chifon);
-  m.position.set(desde.x, 0, desde.z);
-  m.castShadow = true;
-  return m;
-}
-
-// Tela en U entre dos puntos, con varias capas para que se vea voluminosa.
-function guirnaldaTela(a, b, caidaU, capas) {
-  const g = new THREE.Group();
-  for (let k = 0; k < capas; k++) {
-    const largo = a.distanceTo(b);
-    const geo = new THREE.PlaneGeometry(largo, 0.55, 48, 6);
-    const pos = geo.attributes.position;
-    const hondo = caidaU * (0.8 + k * 0.18);
-    for (let i = 0; i < pos.count; i++) {
-      const t = pos.getX(i) / (largo / 2);
-      const y = pos.getY(i);
-      // La tela cuelga más por abajo y se recoge en las puntas.
-      const recogido = 0.3 + 0.7 * (1 - Math.pow(Math.abs(t), 4));
-      pos.setY(i, y * recogido - hondo * (1 - t * t));
-      pos.setZ(i, Math.sin(y * 16 + k) * 0.025 + k * 0.03);
-    }
-    geo.computeVertexNormals();
-    const m = new THREE.Mesh(geo, chifon);
-    m.position.copy(a).add(b).multiplyScalar(0.5);
-    m.rotation.z = Math.atan2(b.y - a.y, b.x - a.x);
-    m.castShadow = true;
-    g.add(m);
-  }
-  return g;
-}
-
-// Prado de flores al pie de cada caída de tela.
-function arregloPie(r, centro, lado) {
-  return pradoFloral(centro.clone().add(new THREE.Vector3(-lado * 0.25, 0, 0.1)), { ...r, radio: 1.0, cantidad: 36, alto: 0.6, espigas: 16 });
-}
-
-function telas(r) {
+// Arco de flores que sigue a los árboles (la línea que dibujó Sebas sobre la foto): nace del pasto
+// junto al jacarandá, sube por el tronco, cruza bajo las copas sobre los novios y baja por la
+// palmera. Es una masa de hortensias blancas con rosas, alhelí, gypsophila y follaje, más gruesa
+// abajo. Detrás de los novios, un medio círculo bajo de flores une los dos pies.
+function arcoDeFlores(r) {
   const { jacaranda: j, palmera: p } = troncos();
   const g = new THREE.Group();
-  const izq = new THREE.Vector3(j.x + 1.5, 4.7, j.z + 0.7);
-  const der = new THREE.Vector3(p.x - 1.0, 4.5, p.z + 0.5);
-  for (const [punto, lado] of [[izq, -1], [der, 1]]) {
-    // Dos capas por lado, un poco corridas, como tela pasada por encima de la rama.
-    g.add(caida(punto, 1.1, 0.9, 0));
-    g.add(caida(punto.clone().add(new THREE.Vector3(lado * 0.18, 0, -0.08)), 0.9, 0.7, 1.7));
-    g.add(arregloPie(r, new THREE.Vector3(punto.x - lado * 0.15, 0, punto.z + 0.55), lado));
+  const recorrido = curva([
+    [j.x + 0.35, 0.25, j.z + 0.45],
+    [j.x + 0.45, 1.4, j.z + 0.5],
+    [j.x + 0.9, 2.6, j.z + 0.55],
+    [j.x + 2.0, 3.45, j.z + 0.75],
+    [-0.6, 3.75, 0.2],
+    [1.2, 3.7, 0.15],
+    [p.x - 1.6, 3.2, p.z + 0.4],
+    [p.x - 0.55, 2.2, p.z + 0.45],
+    [p.x - 0.3, 1.1, p.z + 0.4],
+    [p.x - 0.25, 0.25, p.z + 0.35],
+  ]);
+  const cabezas = [];
+  const puntosRosas = [];
+  const largo = recorrido.getLength();
+  const pasos = Math.round(largo / 0.11);
+  const tangente = new THREE.Vector3();
+  const lado1 = new THREE.Vector3();
+  const lado2 = new THREE.Vector3();
+  for (let i = 0; i <= pasos; i++) {
+    const t = i / pasos;
+    const c = recorrido.getPointAt(t);
+    recorrido.getTangentAt(t, tangente);
+    lado1.crossVectors(tangente, new THREE.Vector3(0, 0, 1)).normalize();
+    lado2.crossVectors(tangente, lado1).normalize();
+    // Grosor: más abundante al pie de los troncos, más liviano arriba.
+    const pie = Math.max(1 - c.y / 1.6, 0);
+    const radio = 0.42 + pie * 0.6;
+    const porSeccion = 4 + Math.round(pie * 6);
+    for (let k = 0; k < porSeccion; k++) {
+      const a = r.aleatorio() * Math.PI * 2;
+      const d = 0.55 + r.aleatorio() * 0.45;
+      const off = lado1.clone().multiplyScalar(Math.cos(a) * radio * d).addScaledVector(lado2, Math.sin(a) * radio * d * 0.8);
+      // Las flores miran hacia afuera del arco y hacia los invitados.
+      const n = off.clone().normalize().add(new THREE.Vector3(0, 0, 0.8)).normalize();
+      if (n.z < -0.3) continue; // la parte de atrás casi no se ve
+      cabezas.push({ p: c.clone().add(off), n, s: 1.1 + r.aleatorio() * 0.6 });
+    }
+    if (i % 2 === 0) puntosRosas.push({ p: c.clone(), n: new THREE.Vector3(0, c.y > 3 ? -0.5 : 0.2, 1).normalize() });
   }
-  g.add(guirnaldaTela(izq.clone().add(new THREE.Vector3(0.1, 0, 0.05)), der.clone().add(new THREE.Vector3(-0.1, 0, 0.05)), 1.5, 3));
-  // Pétalos al pie de las telas (en coordenadas del altar, igual que el resto del grupo).
-  g.add(crearPetalos([izq, der].map((c) => ({ x0: c.x - 1, x1: c.x + 1, z0: c.z + 0.6, z1: c.z + 2.2, cantidad: 220 })), r.aleatorio));
+
+  // Medio círculo bajo detrás de los novios, entre los dos troncos.
+  const fondo = curva([
+    [j.x + 0.6, 0.2, j.z + 0.9],
+    [-1.5, 0.3, -0.35],
+    [0.75, 0.35, -0.6],
+    [2.8, 0.3, -0.3],
+    [p.x - 0.6, 0.2, p.z + 0.8],
+  ]);
+  const pasosFondo = Math.round(fondo.getLength() / 0.16);
+  for (let i = 0; i <= pasosFondo; i++) {
+    const c = fondo.getPointAt(i / pasosFondo);
+    for (let k = 0; k < 3; k++) {
+      const off = new THREE.Vector3((r.aleatorio() - 0.5) * 0.5, r.aleatorio() * 0.4, (r.aleatorio() - 0.5) * 0.5);
+      cabezas.push({ p: c.clone().add(off), n: new THREE.Vector3(r.aleatorio() - 0.5, 1, 0.6).normalize(), s: 0.85 + r.aleatorio() * 0.4 });
+    }
+    if (i % 2 === 0) puntosRosas.push({ p: c.clone().setY(c.y + 0.2), n: new THREE.Vector3(0, 0.6, 1).normalize() });
+  }
+
+  g.add(hortensias(cabezas, r.aleatorio));
+  // Rosas, rusco y gypsophila entre las hortensias.
+  g.add(arregloFloral(puntosRosas, { ...r, rosas: 0.7, radioFollaje: 0.46, densidad: 18, tamanoRosa: 0.11 }));
+
+  // Espigas de alhelí que salen del arreglo al pie de cada tronco y en el fondo.
+  const espigas = [];
+  for (const base of [new THREE.Vector3(j.x + 0.5, 0, j.z + 0.6), new THREE.Vector3(p.x - 0.4, 0, p.z + 0.5)]) {
+    for (let k = 0; k < 18; k++) {
+      espigas.push({ p: base.clone().add(new THREE.Vector3((r.aleatorio() - 0.5) * 1.3, 0, (r.aleatorio() - 0.3) * 0.9)), alto: 0.8 + r.aleatorio() * 0.8 });
+    }
+  }
+  for (let k = 0; k < 20; k++) {
+    const c = fondo.getPointAt(r.aleatorio());
+    espigas.push({ p: c.clone().setY(0), alto: 0.6 + r.aleatorio() * 0.5 });
+  }
+  g.add(espigasDeAlheli(espigas, r.aleatorio));
   return g;
 }
 
@@ -189,4 +169,4 @@ function faroles(r) {
   return g;
 }
 
-export const CONSTRUCTORES = { base, guirnalda, telas, faroles };
+export const CONSTRUCTORES = { flores: arcoDeFlores, base, guirnalda, faroles };
