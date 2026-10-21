@@ -133,8 +133,8 @@ export function puntosEnCurva(curva, separacion, { haciaAfuera = 0.6, centro = n
 }
 
 // Pétalos sueltos sobre el pasto: tarjetas pequeñas, curvadas y casi planas.
-const materialPetalo = new THREE.MeshStandardMaterial({ color: 0xf8f3ea, roughness: 0.7, side: THREE.DoubleSide });
-function geometriaPetalo() {
+export const materialPetalo = new THREE.MeshStandardMaterial({ color: 0xf8f3ea, roughness: 0.7, side: THREE.DoubleSide });
+export function geometriaPetalo() {
   const g = new THREE.PlaneGeometry(1, 1, 2, 2);
   const p = g.attributes.position;
   for (let i = 0; i < p.count; i++) {

@@ -1,9 +1,11 @@
 // Calidad automática: arranca según el dispositivo y baja un nivel si el promedio cae de 30 fps.
 
 const NIVELES = [
-  { nombre: 'baja', pixeles: 1, sombra: 1024, hierba: 0.25, bloom: false },
-  { nombre: 'media', pixeles: 1.35, sombra: 1024, hierba: 0.5, bloom: true },
-  { nombre: 'alta', pixeles: 2, sombra: 2048, hierba: 1, bloom: true },
+  // bloom: escala de resolución del brillo (en baja se calcula a menor resolución, pero no se apaga:
+  // sin él los foquitos y las velas se ven como puntos sin halo).
+  { nombre: 'baja', pixeles: 1, sombra: 1024, hierba: 0.25, bloom: 0.35 },
+  { nombre: 'media', pixeles: 1.35, sombra: 1024, hierba: 0.5, bloom: 0.5 },
+  { nombre: 'alta', pixeles: 2, sombra: 2048, hierba: 1, bloom: 0.5 },
 ];
 
 const FPS_MINIMO = 30;
